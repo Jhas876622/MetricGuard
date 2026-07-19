@@ -1,0 +1,16 @@
+[
+  {"key": "mau",                    "concept": "monthly active users concept"},
+  {"key": "monthly active users",   "concept": "monthly active users concept"},
+  {"key": "active users",           "concept": "monthly active users concept"},
+  {"key": "monthly_active_users",   "concept": "monthly active users concept"},
+  {"key": "active_users",           "concept": "monthly active users concept"},
+  {"key": "revenue",                "concept": "revenue concept"},
+  {"key": "monthly_revenue",        "concept": "revenue concept"},
+  {"key": "revenue_monthly",        "concept": "revenue concept"},
+  {"key": "churn",                  "concept": "churn concept"},
+  {"key": "churn_rate",             "concept": "churn concept"},
+  {"key": "customer_churn",         "concept": "churn concept"},
+  {"key": "conversion_rate",        "concept": "conversion concept"},
+  {"key": "average_order_value",    "concept": "average order value concept"},
+  {"key": "aov",                    "concept": "average order value concept"}
+]

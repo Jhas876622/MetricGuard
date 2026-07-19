@@ -1,0 +1,114 @@
+[
+  {
+    "id": "m01",
+    "team": "Finance",
+    "metric_name": "monthly_revenue",
+    "sql": "SELECT DATE_TRUNC('month', order_date) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'completed' GROUP BY 1",
+    "description": "Total revenue from completed orders, grouped by month. Excludes refunds and cancellations.",
+    "filters": ["status = 'completed'"],
+    "includes_refunds": false,
+    "time_grain": "month"
+  },
+  {
+    "id": "m02",
+    "team": "Sales",
+    "metric_name": "monthly_revenue",
+    "sql": "SELECT DATE_TRUNC('month', order_date) AS month, SUM(amount) AS revenue FROM orders GROUP BY 1",
+    "description": "Revenue per month across all orders placed, including pending and refunded.",
+    "filters": [],
+    "includes_refunds": true,
+    "time_grain": "month"
+  },
+  {
+    "id": "m03",
+    "team": "Marketing",
+    "metric_name": "revenue_monthly",
+    "sql": "SELECT DATE_TRUNC('month', order_date) AS month, SUM(amount - refund_amount) AS revenue FROM orders WHERE status IN ('completed','shipped') GROUP BY 1",
+    "description": "Net monthly revenue after subtracting refunds, for completed and shipped orders.",
+    "filters": ["status IN ('completed','shipped')"],
+    "includes_refunds": false,
+    "time_grain": "month"
+  },
+  {
+    "id": "m04",
+    "team": "Product",
+    "metric_name": "active_users",
+    "sql": "SELECT COUNT(DISTINCT user_id) FROM events WHERE event_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "description": "Distinct users with any event in the trailing 30 days.",
+    "filters": ["event_date >= CURRENT_DATE - INTERVAL '30 days'"],
+    "time_grain": "30d_rolling"
+  },
+  {
+    "id": "m05",
+    "team": "Growth",
+    "metric_name": "MAU",
+    "sql": "SELECT COUNT(DISTINCT user_id) FROM events WHERE DATE_TRUNC('month', event_date) = DATE_TRUNC('month', CURRENT_DATE)",
+    "description": "Monthly active users: distinct users active in the current calendar month.",
+    "filters": ["current calendar month"],
+    "time_grain": "calendar_month"
+  },
+  {
+    "id": "m06",
+    "team": "Data",
+    "metric_name": "monthly_active_users",
+    "sql": "SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type = 'login' AND event_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "description": "Users who logged in at least once in the last 30 days. Only counts login events.",
+    "filters": ["event_type = 'login'", "event_date >= CURRENT_DATE - INTERVAL '30 days'"],
+    "time_grain": "30d_rolling"
+  },
+  {
+    "id": "m07",
+    "team": "Finance",
+    "metric_name": "churn_rate",
+    "sql": "SELECT (COUNT(CASE WHEN cancelled THEN 1 END) * 1.0 / COUNT(*)) FROM subscriptions WHERE period = 'last_month'",
+    "description": "Churn rate: share of subscriptions cancelled last month over total subscriptions. Uses subscription cancellation events instead of user-activity drop-off.",
+    "filters": ["period = 'last_month'"],
+    "time_grain": "month"
+  },
+  {
+    "id": "m08",
+    "team": "Product",
+    "metric_name": "customer_churn",
+    "sql": "SELECT (COUNT(DISTINCT churned_user_id) * 1.0 / COUNT(DISTINCT user_id)) FROM user_activity WHERE month = 'last_month'",
+    "description": "Churn rate: fraction of users who churned (became inactive) last month relative to all users active the prior month. Uses user-activity data, not subscription cancellations.",
+    "filters": ["month = 'last_month'"],
+    "time_grain": "month"
+  },
+  {
+    "id": "m09",
+    "team": "Sales",
+    "metric_name": "conversion_rate",
+    "sql": "SELECT (COUNT(CASE WHEN converted THEN 1 END) * 1.0 / COUNT(*)) FROM leads",
+    "description": "Leads that converted to paying customers over all leads, all-time.",
+    "filters": [],
+    "time_grain": "all_time"
+  },
+  {
+    "id": "m10",
+    "team": "Marketing",
+    "metric_name": "conversion_rate",
+    "sql": "SELECT (COUNT(CASE WHEN purchased THEN 1 END) * 1.0 / COUNT(DISTINCT session_id)) FROM web_sessions WHERE date >= CURRENT_DATE - INTERVAL '7 days'",
+    "description": "Share of website sessions in the last 7 days that ended in a purchase.",
+    "filters": ["date >= last 7 days"],
+    "time_grain": "7d_rolling"
+  },
+  {
+    "id": "m11",
+    "team": "Growth",
+    "metric_name": "average_order_value",
+    "sql": "SELECT SUM(amount) / COUNT(DISTINCT order_id) FROM orders WHERE status = 'completed'",
+    "description": "Average value per completed order.",
+    "filters": ["status = 'completed'"],
+    "time_grain": "all_time"
+  },
+  {
+    "id": "m12",
+    "team": "Finance",
+    "metric_name": "AOV",
+    "sql": "SELECT SUM(amount - refund_amount) / COUNT(DISTINCT order_id) FROM orders",
+    "description": "Average order value net of refunds across all orders.",
+    "filters": [],
+    "includes_refunds": false,
+    "time_grain": "all_time"
+  }
+]

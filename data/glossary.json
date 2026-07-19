@@ -1,0 +1,27 @@
+[
+  {
+    "concept": "Revenue (Monthly)",
+    "official_definition": "Net revenue = SUM(amount - refund_amount) for orders with status 'completed', grouped by calendar month. Refunds ARE subtracted. Pending and cancelled orders are excluded.",
+    "owner": "Finance"
+  },
+  {
+    "concept": "Monthly Active Users (MAU)",
+    "official_definition": "Distinct users with at least one qualifying event in the current CALENDAR month. A qualifying event is any event, not only logins. Rolling 30-day windows are NOT used for the official MAU.",
+    "owner": "Product Analytics"
+  },
+  {
+    "concept": "Churn Rate",
+    "official_definition": "Churn = distinct users active in the prior month but inactive in the current month, divided by distinct users active in the prior month. Measured on user activity, not subscription cancellations.",
+    "owner": "Product Analytics"
+  },
+  {
+    "concept": "Conversion Rate",
+    "official_definition": "Conversion = distinct sessions that resulted in a purchase divided by total distinct sessions, over a stated, explicit time window. Lead-based and session-based conversion must be labelled separately and never mixed.",
+    "owner": "Growth"
+  },
+  {
+    "concept": "Average Order Value (AOV)",
+    "official_definition": "AOV = net revenue (amount - refund_amount) for completed orders divided by the count of distinct completed orders. Refunds are netted; non-completed orders are excluded.",
+    "owner": "Finance"
+  }
+]
