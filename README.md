@@ -1,10 +1,17 @@
 # MetricGuard — AI-Powered Metric Consistency Auditor
 
-![Top Language](https://img.shields.io/github/languages/top/Jhas876622/MetricGuard)
-![Tests](https://img.shields.io/badge/tests-34%2F34%20passing-brightgreen)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![LLM](https://img.shields.io/badge/LLM-Claude%20(Anthropic)-6b4fbb)
-![Status](https://img.shields.io/badge/status-active-success)
+<p align="center">
+
+![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)
+![AI](https://img.shields.io/badge/AI-Generative-orange?style=for-the-badge)
+![RAG](https://img.shields.io/badge/RAG-Retrieval--Augmented--Generation-success?style=for-the-badge)
+![Embeddings](https://img.shields.io/badge/Embeddings-Sentence%20Transformers-red?style=for-the-badge)
+![SQL](https://img.shields.io/badge/SQL-SQLGlot-blueviolet?style=for-the-badge)
+![Dashboard](https://img.shields.io/badge/Dashboard-Interactive-green?style=for-the-badge)
+![Pydantic](https://img.shields.io/badge/Pydantic-v2-red?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+
+</p>
 
 > **Detects when the same business metric is defined differently across teams, explains why dashboards disagree, and recommends the canonical definition — automatically.**
 
