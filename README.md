@@ -30,8 +30,6 @@
 | **Peak trust-risk score** | 100/100 (MAU/active_users/churn cluster) |
 | **Repo size** | 156 KB |
 
-*Code stats generated directly from the repository (`git log`, `wc -l`, `pytest`) — not estimated. See [§12 Known Limitations](#12-limitations--future-work) for a documented edge case in the offline embedding fallback.*
-
 ---
 
 ## Table of Contents
