@@ -14,21 +14,145 @@
 </p>
 
 > **Detects when the same business metric is defined differently across teams, explains why dashboards disagree, and recommends the canonical definition — automatically.**
+<p align="center">
 
-## 📊 Project at a Glance
+### 🧠 Detect conflicting business metrics before they destroy trust in analytics.
 
-| Metric | Value |
-|---|---|
-| **Lines of code (Python)** | 1,181 |
-| **Lines of code (total, incl. dashboard)** | 1,522 |
-| **Core engine** | `engine.py` — 472 lines |
-| **GenAI layer (RAG + LLM agent)** | `genai.py` — 249 lines |
-| **Test suite** | `test_engine.py` — 336 lines, **34/34 passing in 0.35s** |
-| **Interactive dashboard** | `dashboard.html` — 341 lines, self-contained |
-| **Metric definitions analyzed** | 12, across 6 simulated teams |
-| **Conflicts detected (neural embedding run)** | 12/12 (100%), 4 conflict groups |
-| **Peak trust-risk score** | 100/100 (MAU/active_users/churn cluster) |
-| **Repo size** | 156 KB |
+### 📊 Semantic Search • SQL AST Parsing • RAG • LLM Agents • Trust Scoring
+
+</p>
+
+# 📖 Abstract
+
+Modern organizations rely on hundreds of dashboards built independently by multiple teams.
+
+Although these dashboards often display metrics with identical names, their underlying SQL logic frequently differs due to inconsistent filters, aggregation rules, refund handling, rolling windows, or business definitions.
+
+These inconsistencies silently propagate across organizations and eventually lead to one of the most expensive problems in data analytics:
+
+> **Nobody trusts the numbers anymore.**
+
+MetricGuard is an AI-powered Metric Governance Engine that automatically discovers conflicting metric definitions using semantic embeddings, vector similarity search, SQL Abstract Syntax Tree (AST) parsing, and Retrieval-Augmented Generation (RAG).
+
+Instead of replacing an organization's existing BI stack, MetricGuard scans metric definitions already present inside SQL repositories, dashboards, notebooks, or metadata catalogs and identifies semantic conflicts before they affect executive decision making.
+
+Unlike traditional data validation systems that only verify correctness of data pipelines, MetricGuard validates the **meaning** of metrics.
+
+This project combines modern NLP, vector search, static SQL analysis, Large Language Models, and governed semantic retrieval into a unified framework capable of explaining why two dashboards disagree and recommending a canonical business definition.
+
+---
+
+# ✨ Key Features
+
+✅ Semantic Metric Similarity Detection
+
+✅ Vector Embeddings using Sentence Transformers
+
+✅ SQL AST Parsing using SQLGlot
+
+✅ Pydantic Schema Validation
+
+✅ Union-Find Semantic Clustering
+
+✅ Trust Risk Scoring Engine
+
+✅ Retrieval-Augmented Generation (RAG)
+
+✅ Claude LLM Recommendation Engine
+
+✅ Interactive HTML Dashboard
+
+✅ Offline TF-IDF Fallback
+
+✅ Machine Readable JSON Reports
+
+✅ Executive Business Reports
+
+---
+
+# 🌍 Why MetricGuard?
+
+Imagine three teams measuring **Revenue**.
+
+### Finance
+
+```
+Revenue = SUM(amount)
+WHERE status='completed'
+```
+
+### Marketing
+
+```
+Revenue = SUM(amount-refunds)
+WHERE status IN ('completed','shipped')
+```
+
+### Sales
+
+```
+Revenue = SUM(amount)
+```
+
+Every dashboard displays **Revenue**.
+
+Every dashboard is technically correct.
+
+Every dashboard shows a different number.
+
+Now imagine this happening across
+
+- Revenue
+- Active Users
+- Churn
+- Conversion
+- AOV
+- CAC
+- LTV
+- Retention
+
+Eventually,
+
+Executives stop trusting dashboards.
+
+Analysts spend weeks debugging definitions.
+
+Business decisions become delayed.
+
+MetricGuard automatically detects these conflicts before they become organizational problems.
+
+---
+
+# 🏆 Highlights
+
+- 🔥 AI + Data Engineering Project
+- 🔥 Production-style Architecture
+- 🔥 Research-inspired Design
+- 🔥 Explainable AI Pipeline
+- 🔥 Recruiter Friendly
+- 🔥 FAANG-Level Documentation
+- 🔥 End-to-End Analytics Governance
+- 🔥 Modern Python Engineering Practices
+
+---
+
+# 🛠 Technology Stack
+
+| Category | Technologies |
+|-----------|-------------|
+| Programming Language | Python 3.12 |
+| AI | Sentence Transformers |
+| NLP | Embeddings |
+| SQL Analysis | SQLGlot |
+| Validation | Pydantic v2 |
+| Machine Learning | Scikit-Learn |
+| Vector Search | Cosine Similarity |
+| RAG | Retrieval-Augmented Generation |
+| LLM | Claude (Anthropic API) |
+| Dashboard | HTML + CSS + JavaScript |
+| Reports | JSON |
+| Testing | Pytest |
+| Version Control | Git & GitHub |
 
 ---
 
