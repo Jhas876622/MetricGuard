@@ -368,6 +368,71 @@ def find_semantic_groups(
     return groups
 
 
+def merge_exact_name_duplicates(
+    metrics: list[dict],
+    groups: list[list[int]],
+) -> list[list[int]]:
+    """
+    Safety net layered ON TOP of find_semantic_groups(), not inside it.
+
+    WHY THIS EXISTS (verified bug, not hypothetical): on the TF-IDF fallback
+    path (no network access to download the neural embedding model), two
+    metrics can share the exact same metric_name yet still score just under
+    SIMILARITY_THRESHOLD if their surrounding description/SQL text differs
+    enough. In the demo dataset, the two 'conversion_rate' definitions
+    (Sales vs Marketing) score 0.636 — below the 0.65 threshold — and were
+    silently dropped as a conflict before this function existed. The neural
+    model doesn't have this problem (both score >=0.70), but the offline
+    fallback needs a check that doesn't depend on embedding quality at all:
+    identical names are the same concept BY DEFINITION, no similarity score
+    required.
+
+    Kept separate from find_semantic_groups() (rather than folded into its
+    union-find loop) so that function stays pure similarity-based grouping —
+    exactly what its unit tests exercise. This function operates on its
+    output instead.
+    """
+    name_to_indices: dict[str, list[int]] = defaultdict(list)
+    for i, m in enumerate(metrics):
+        name_to_indices[m["metric_name"].strip().lower()].append(i)
+
+    # Union-find over the *existing* groups (each group's members already
+    # merged into one bucket) plus any singleton indices not yet grouped.
+    parent = {i: i for i in range(len(metrics))}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(x: int, y: int) -> None:
+        parent[find(x)] = find(y)
+
+    for group in groups:
+        for a, b in zip(group, group[1:]):
+            union(a, b)
+
+    merged_count = 0
+    for indices in name_to_indices.values():
+        for a, b in zip(indices, indices[1:]):
+            if find(a) != find(b):
+                merged_count += 1
+            union(a, b)
+
+    if merged_count == 0:
+        return groups
+
+    logger.info(
+        "merge_exact_name_duplicates: merged %d pair(s) sharing an identical "
+        "metric_name that fell below the similarity threshold", merged_count
+    )
+    buckets: dict[int, list[int]] = defaultdict(list)
+    for i in range(len(metrics)):
+        buckets[find(i)].append(i)
+    return [sorted(g) for g in buckets.values() if len(g) > 1]
+
+
 def detect_definition_conflicts(metrics: list[dict], group: list[int]) -> list[str]:
     """
     Given a group of semantically similar metrics, detect logic conflicts.
@@ -430,6 +495,7 @@ def run_analysis(threshold: float = SIMILARITY_THRESHOLD) -> tuple[list[dict], l
     vectors = embed(texts)
     sim = cosine_similarity_matrix(vectors)
     groups = find_semantic_groups(metrics, sim, threshold)
+    groups = merge_exact_name_duplicates(metrics, groups)
 
     results = []
     for group in groups:
