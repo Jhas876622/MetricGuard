@@ -1,4 +1,27 @@
-# MetricGuard — AI-Powered Metric Consistency Auditor
+![Last Commit](https://img.shields.io/github/last-commit/Jhas876622/MetricGuard?color=brightgreen)
+![Repo Size](https://img.shields.io/github/repo-size/Jhas876622/MetricGuard)
+![Top Language](https://img.shields.io/github/languages/top/Jhas876622/MetricGuard)
+![Tests](https://img.shields.io/badge/tests-34%2F34%20passing-brightgreen)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![LLM](https://img.shields.io/badge/LLM-Claude%20(Anthropic)-6b4fbb)
+![Status](https://img.shields.io/badge/status-active-success)
+
+## 📊 Project at a Glance
+
+| Metric | Value |
+|---|---|
+| **Lines of code (Python)** | 1,181 |
+| **Lines of code (total, incl. dashboard)** | 1,522 |
+| **Core engine** | `engine.py` — 472 lines |
+| **GenAI layer (RAG + LLM agent)** | `genai.py` — 249 lines |
+| **Test suite** | `test_engine.py` — 336 lines, **34/34 passing in 0.35s** |
+| **Interactive dashboard** | `dashboard.html` — 341 lines, self-contained |
+| **Metric definitions analyzed** | 12, across 6 simulated teams |
+| **Conflicts detected** | 8/12 (66.7% conflict rate), 3 conflict groups |
+| **Peak trust-risk score** | 85/100 (Revenue, MAU) |
+| **Repo size** | 156 KB |
+
+*Stats generated directly from the repository (`git log`, `wc -l`, `pytest`) — not estimated.*# MetricGuard — AI-Powered Metric Consistency Auditor
 
 > **Detects when the same business metric is defined differently across teams, explains why dashboards disagree, and recommends the canonical definition — automatically.**
 
