@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: metricguard
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # set manually in Render dashboard — never committed
+      - key: PYTHON_VERSION
+        value: "3.12"

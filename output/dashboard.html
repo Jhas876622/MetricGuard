@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetricGuard — Metric Trust Audit</title>
-<script src="data.js"></script>
+<!-- data.js is loaded for local file:// mode only.                        -->
+<!-- In HTTP mode (FastAPI), /results is fetched dynamically via JS below. -->
+<script>
+// Attempt to load data.js (local mode). Failure is silently ignored —
+// the boot sequence below falls through to fetch('/results') in HTTP mode.
+</script>
 <style>
   :root{
     --ink:#0d1117; --panel:#151b23; --line:#232c38;
@@ -19,16 +24,12 @@
     background-image:radial-gradient(circle at 20% -10%,rgba(88,166,255,.06),transparent 40%);
     min-height:100vh;padding:32px 20px}
   .wrap{max-width:1080px;margin:0 auto}
-
-  /* ── header ── */
   header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;
     color:var(--accent);margin-bottom:10px}
   h1{font-size:34px;color:var(--bright);font-weight:700;letter-spacing:-.02em}
   h1 .g{color:var(--danger)}
   .sub{color:var(--dim);margin-top:8px;max-width:640px;font-size:14px}
-
-  /* ── KPI tiles ── */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
     gap:14px;margin-bottom:34px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;
@@ -37,8 +38,6 @@
   .kpi.bad::before{background:var(--danger)}
   .kpi .n{font-family:var(--mono);font-size:30px;color:var(--bright);font-weight:600;line-height:1}
   .kpi .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
-
-  /* ── controls bar ── */
   .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:20px}
   .ctrl-label{font-family:var(--mono);font-size:11px;color:var(--dim);
     text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
@@ -49,28 +48,26 @@
   .chip:hover{border-color:var(--accent);color:var(--accent)}
   .chip.active{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:600}
   .chip.all-chip.active{background:var(--dim);border-color:var(--dim)}
-
   .sort-btn{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:6px;
     background:var(--panel);border:1px solid var(--line);color:var(--dim);
     cursor:pointer;transition:all .15s;white-space:nowrap}
   .sort-btn:hover{border-color:var(--accent);color:var(--accent)}
   .sort-btn.active{border-color:var(--accent);color:var(--accent)}
-
   .refresh-info{font-family:var(--mono);font-size:10px;color:var(--dim);
-    margin-left:auto;white-space:nowrap}
+    margin-left:auto;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
   .refresh-dot{display:inline-block;width:6px;height:6px;border-radius:50%;
     background:var(--safe);margin-right:4px;vertical-align:middle}
-
-  /* ── section title ── */
+  .run-btn{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:6px;
+    background:rgba(88,166,255,.1);border:1px solid var(--accent);color:var(--accent);
+    cursor:pointer;transition:all .15s;white-space:nowrap}
+  .run-btn:hover{background:rgba(88,166,255,.2)}
+  .run-btn:disabled{opacity:.4;cursor:not-allowed}
   .sec-title{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
     color:var(--dim);margin:8px 0 16px;display:flex;align-items:center;gap:10px}
   .sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
   .results-count{font-size:11px;color:var(--dim);font-family:var(--mono)}
-
-  /* ── conflict cards ── */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-    margin-bottom:18px;overflow:hidden;transition:opacity .2s}
-  .card.hidden{display:none}
+    margin-bottom:18px;overflow:hidden}
   .card-head{display:flex;justify-content:space-between;align-items:flex-start;
     gap:16px;padding:20px 22px;border-bottom:1px solid var(--line)}
   .names{font-family:var(--mono);font-size:17px;color:var(--bright);font-weight:600}
@@ -107,11 +104,8 @@
   .rec .concept{color:var(--bright);font-weight:600;margin-bottom:8px;font-size:15px}
   .rec .txt{font-size:13px;color:var(--text);white-space:pre-wrap}
   .rec .owner{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:10px}
-
-  /* ── empty state ── */
   .empty{text-align:center;padding:48px 24px;color:var(--dim);
     font-family:var(--mono);font-size:13px}
-
   footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);
     font-family:var(--mono);font-size:11px;color:var(--dim);
     text-align:center;letter-spacing:.05em}
@@ -131,16 +125,17 @@
 
   <div class="kpis" id="kpis"></div>
 
-  <!-- ── Controls bar ── -->
   <div class="controls" id="controls">
     <span class="ctrl-label">Filter by team</span>
     <div class="filter-chips" id="team-filters"></div>
     <span class="ctrl-label" style="margin-left:8px">Sort</span>
     <button class="sort-btn active" id="sort-risk" onclick="setSort('risk')">Risk ↓</button>
-    <button class="sort-btn" id="sort-sim"  onclick="setSort('sim')">Similarity ↓</button>
-    <span class="refresh-info" id="refresh-info">
-      <span class="refresh-dot"></span>auto-refresh in <span id="countdown">30</span>s
-    </span>
+    <button class="sort-btn" id="sort-sim" onclick="setSort('sim')">Similarity ↓</button>
+    <button class="run-btn" id="run-btn" onclick="triggerRun()">&#9654; Re-run pipeline</button>
+    <div class="refresh-info">
+      <span><span class="refresh-dot"></span>auto-refresh in <span id="countdown">30</span>s</span>
+      <span id="last-run" style="font-size:9px;color:var(--dim)"></span>
+    </div>
   </div>
 
   <div class="sec-title">
@@ -156,76 +151,56 @@
 </div>
 
 <script>
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
 const riskColor = r => r >= 70 ? 'var(--danger)' : r >= 40 ? 'var(--warn)' : 'var(--safe)';
 
-// Full HTML escaping — &, <, >, ", ' — prevents XSS from LLM output or
-// untrusted field values.
 function esc(str) {
   if (str == null) return '';
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-const d = MG_DATA;
 let activeTeam = 'ALL';
-let sortMode   = 'risk';   // 'risk' | 'sim'
+let sortMode   = 'risk';
+let currentData = null;
 
-// ---------------------------------------------------------------------------
-// KPI tiles
-// ---------------------------------------------------------------------------
-const kpiDefs = [
-  { n: d.kpis.total_definitions_scanned,    l: 'Definitions scanned' },
-  { n: d.kpis.conflicting_definitions_found, l: 'In conflict',    bad: true },
-  { n: d.kpis.pct_definitions_in_conflict + '%', l: 'Conflict rate', bad: true },
-  { n: d.kpis.conflict_groups,              l: 'Conflict groups' },
-  { n: d.kpis.teams_affected,               l: 'Teams affected' },
-  { n: d.kpis.highest_trust_risk,           l: 'Peak risk score', bad: true },
-];
-document.getElementById('kpis').innerHTML = kpiDefs
-  .map(k => `<div class="kpi ${k.bad ? 'bad' : ''}">
-    <div class="n">${esc(k.n)}</div>
-    <div class="l">${esc(k.l)}</div>
-  </div>`)
-  .join('');
+function renderKPIs(d) {
+  if (!d || !d.kpis) return;
+  const kpiDefs = [
+    { n: d.kpis.total_definitions_scanned,        l: 'Definitions scanned' },
+    { n: d.kpis.conflicting_definitions_found,     l: 'In conflict',    bad: true },
+    { n: d.kpis.pct_definitions_in_conflict + '%', l: 'Conflict rate',  bad: true },
+    { n: d.kpis.conflict_groups,                   l: 'Conflict groups' },
+    { n: d.kpis.teams_affected,                    l: 'Teams affected' },
+    { n: d.kpis.highest_trust_risk,                l: 'Peak risk score', bad: true },
+  ];
+  document.getElementById('kpis').innerHTML = kpiDefs
+    .map(k => `<div class="kpi ${k.bad ? 'bad' : ''}">
+      <div class="n">${esc(k.n)}</div><div class="l">${esc(k.l)}</div>
+    </div>`).join('');
+}
 
-// ---------------------------------------------------------------------------
-// Build team filter chips (deduplicated across all conflicts)
-// ---------------------------------------------------------------------------
-const allTeams = [...new Set(
-  (d.conflicts || []).flatMap(c => Array.isArray(c.teams) ? c.teams : [])
-)].sort();
-
-const filterContainer = document.getElementById('team-filters');
-filterContainer.innerHTML =
-  `<button class="chip all-chip active" onclick="setTeam('ALL')">All teams</button>` +
-  allTeams.map(t =>
-    `<button class="chip" data-team="${esc(t)}" onclick="setTeam('${esc(t)}')">${esc(t)}</button>`
-  ).join('');
+function renderFilters(d) {
+  if (!d || !d.conflicts) return;
+  const allTeams = [...new Set(
+    (d.conflicts || []).flatMap(c => Array.isArray(c.teams) ? c.teams : [])
+  )].sort();
+  document.getElementById('team-filters').innerHTML =
+    `<button class="chip all-chip active" onclick="setTeam('ALL')">All teams</button>` +
+    allTeams.map(t =>
+      `<button class="chip" data-team="${esc(t)}" onclick="setTeam('${esc(t)}')">${esc(t)}</button>`
+    ).join('');
+}
 
 function setTeam(team) {
   activeTeam = team;
-  // Update chip active state
   document.querySelectorAll('.filter-chips .chip').forEach(btn => {
-    const isAll    = btn.classList.contains('all-chip');
-    const isTarget = btn.dataset.team === team;
-    btn.classList.toggle('active', team === 'ALL' ? isAll : isTarget);
+    btn.classList.toggle('active',
+      team === 'ALL' ? btn.classList.contains('all-chip') : btn.dataset.team === team);
   });
   renderConflicts();
 }
 
-// ---------------------------------------------------------------------------
-// Sort
-// ---------------------------------------------------------------------------
 function setSort(mode) {
   sortMode = mode;
   document.getElementById('sort-risk').classList.toggle('active', mode === 'risk');
@@ -233,32 +208,19 @@ function setSort(mode) {
   renderConflicts();
 }
 
-// ---------------------------------------------------------------------------
-// Render conflict cards
-// ---------------------------------------------------------------------------
 function renderConflicts() {
+  if (!currentData) return;
   const container = document.getElementById('conflicts');
   const countEl   = document.getElementById('results-count');
+  let conflicts   = (currentData.conflicts || []).slice();
 
-  let conflicts = (d.conflicts || []).slice();
-
-  // Filter
-  if (activeTeam !== 'ALL') {
-    conflicts = conflicts.filter(c =>
-      Array.isArray(c.teams) && c.teams.includes(activeTeam)
-    );
-  }
-
-  // Sort
-  if (sortMode === 'risk') {
-    conflicts.sort((a, b) => b.trust_risk - a.trust_risk);
-  } else {
-    conflicts.sort((a, b) => b.avg_similarity - a.avg_similarity);
-  }
+  if (activeTeam !== 'ALL')
+    conflicts = conflicts.filter(c => Array.isArray(c.teams) && c.teams.includes(activeTeam));
+  conflicts.sort((a, b) => sortMode === 'risk'
+    ? b.trust_risk - a.trust_risk : b.avg_similarity - a.avg_similarity);
 
   countEl.textContent = `${conflicts.length} shown`;
-
-  if (conflicts.length === 0) {
+  if (!conflicts.length) {
     container.innerHTML = `<div class="empty">No conflicts match the current filter.</div>`;
     return;
   }
@@ -269,71 +231,103 @@ function renderConflicts() {
     const names  = Array.isArray(c.names)       ? c.names       : [];
     const prblms = Array.isArray(c.conflicts)   ? c.conflicts   : [];
     const defs   = Array.isArray(c.definitions) ? c.definitions : [];
-
-    const chips   = teams.map(t =>
-      `<span class="team-chip">${esc(t)}</span>`).join('');
-    const probs   = prblms.map(p => `<li>${esc(p)}</li>`).join('');
+    const chips  = teams.map(t => `<span class="team-chip">${esc(t)}</span>`).join('');
+    const probs  = prblms.map(p => `<li>${esc(p)}</li>`).join('');
     const defHtml = defs.map(x => `
       <div class="def">
-        <div class="dh">
-          <span class="team-lbl">${esc(x.team)}</span>
-          <span class="mn">${esc(x.name)}</span>
-        </div>
+        <div class="dh"><span class="team-lbl">${esc(x.team)}</span><span class="mn">${esc(x.name)}</span></div>
         <div class="desc">${esc(x.description)}</div>
         <code>${esc(x.sql)}</code>
       </div>`).join('');
-
     const simLabel = c.retrieval_similarity != null ? c.retrieval_similarity : 'N/A';
     const rec = c.recommendation ? `
       <div class="rec">
-        <div class="rh">
-          <span>Agent recommendation · RAG-grounded</span>
-          <span>match ${esc(simLabel)}</span>
-        </div>
+        <div class="rh"><span>Agent recommendation · RAG-grounded</span><span>match ${esc(simLabel)}</span></div>
         <div class="concept">${esc(c.recommended_concept)}</div>
         <div class="txt">${esc(c.recommendation)}</div>
         <div class="owner">Canonical owner: ${esc(c.glossary_owner) || '—'}</div>
       </div>` : '';
-
     return `
     <div class="card">
       <div class="card-head">
-        <div>
-          <div class="names">${names.map(esc).join('  ≟  ')}</div>
-          <div class="teams">${chips}</div>
-        </div>
+        <div><div class="names">${names.map(esc).join('  ≟  ')}</div><div class="teams">${chips}</div></div>
         <div class="gauge">
           <div class="val" style="color:${rc}">${esc(c.trust_risk)}</div>
           <div class="cap">trust risk</div>
           <div class="bar"><i style="width:${c.trust_risk}%;background:${rc}"></i></div>
         </div>
       </div>
-      <div class="body">
-        <ul class="problems">${probs}</ul>
-        <div class="defs">${defHtml}</div>
-        ${rec}
-      </div>
+      <div class="body"><ul class="problems">${probs}</ul><div class="defs">${defHtml}</div>${rec}</div>
     </div>`;
   }).join('');
 }
 
-// Initial render
-renderConflicts();
+function applyData(d) {
+  if (!d) return;
+  if (d.loading) {
+    document.getElementById('conflicts').innerHTML =
+      `<div class="empty">Pipeline is running — results will appear shortly...</div>`;
+    document.getElementById('results-count').textContent = '';
+    return;
+  }
+  currentData = d;
+  renderKPIs(d);
+  renderFilters(d);
+  renderConflicts();
+  const meta = d.meta || {};
+  if (meta.last_run_time) {
+    document.getElementById('last-run').textContent =
+      `last run ${new Date(meta.last_run_time * 1000).toLocaleTimeString()}`;
+  }
+  if (meta.last_run_error) {
+    const el = document.getElementById('last-run');
+    el.textContent = `error: ${meta.last_run_error}`;
+    el.style.color = 'var(--danger)';
+  }
+}
 
-// ---------------------------------------------------------------------------
-// Auto-refresh countdown — polls data.js every 30 seconds.
-// When report.py writes a new data.js, the page reloads automatically so the
-// dashboard always reflects the latest pipeline run without manual refresh.
-// ---------------------------------------------------------------------------
+async function fetchData() {
+  try {
+    const res = await fetch('/results');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    applyData(await res.json());
+    return true;
+  } catch { return false; }
+}
+
+async function triggerRun() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  try {
+    await fetch('/run', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 2000));
+    await fetchData();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#9654; Re-run pipeline';
+  }
+}
+
+// Boot: try HTTP first, fall back to MG_DATA (local file mode)
+(async () => {
+  const ok = await fetchData();
+  if (!ok && typeof MG_DATA !== 'undefined') applyData(MG_DATA);
+  else if (!ok)
+    document.getElementById('conflicts').innerHTML =
+      `<div class="empty">No data. Run <code>python src/report.py</code> first.</div>`;
+})();
+
+// Auto-refresh
 let countdown = 30;
 const countdownEl = document.getElementById('countdown');
-
-setInterval(() => {
+setInterval(async () => {
   countdown -= 1;
-  countdownEl.textContent = countdown;
+  if (countdownEl) countdownEl.textContent = countdown;
   if (countdown <= 0) {
-    // Reload the page — the browser will re-fetch data.js
-    window.location.reload();
+    countdown = 30;
+    const ok = await fetchData();
+    if (!ok && typeof MG_DATA !== 'undefined') window.location.reload();
   }
 }, 1000);
 </script>
