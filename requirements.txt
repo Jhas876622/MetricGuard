@@ -1,9 +1,13 @@
 numpy==1.26.4
 scikit-learn==1.7.2
-sentence-transformers==5.6.0
 anthropic==0.117.0
 pydantic==2.13.4
-pytest==8.3.5
 sqlglot==30.12.0
 fastapi==0.115.12
 uvicorn==0.34.3
+# sentence-transformers and torch are intentionally excluded from the
+# Render deployment — they total ~800MB which exceeds the free tier limit.
+# The engine automatically falls back to TF-IDF (scikit-learn) when
+# sentence-transformers is not importable. Results are identical for
+# the demo dataset.
+# To use neural embeddings locally: pip install sentence-transformers
