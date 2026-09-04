@@ -28,7 +28,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 # ---------------------------------------------------------------------------
@@ -57,10 +56,35 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan handler (replaces deprecated @app.on_event("startup")).
+    Runs the pipeline once on startup if no results exist yet.
+    """
+    global _last_run_time
+    if not RESULTS_PATH.exists():
+        logger.info("No existing results — running initial pipeline on startup")
+        _pipeline_running.set()
+        thread = threading.Thread(
+            target=_run_pipeline_background,
+            args=(bool(os.environ.get("ANTHROPIC_API_KEY")),),
+            daemon=True,
+        )
+        thread.start()
+    else:
+        logger.info("Existing results found at %s — skipping startup run", RESULTS_PATH)
+        _last_run_time = RESULTS_PATH.stat().st_mtime
+    yield   # app runs here
+
+
 app = FastAPI(
     title="MetricGuard",
     description="AI-powered metric consistency auditor",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -70,9 +94,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Track whether a pipeline run is in progress (prevent concurrent runs)
-_pipeline_lock = threading.Lock()
-_pipeline_running = False
+# ---------------------------------------------------------------------------
+# Thread-safe pipeline state
+# ---------------------------------------------------------------------------
+# threading.Event is used instead of a plain bool so reads and writes are
+# atomic across threads. _pipeline_running.is_set() == True means a run is
+# in progress; clear() marks it done. A plain bool is not thread-safe in
+# CPython when modified from a background thread and read from the main thread.
+# ---------------------------------------------------------------------------
+_pipeline_running = threading.Event()   # set = running, clear = idle
 _last_run_time: float | None = None
 _last_run_error: str | None = None
 
@@ -88,7 +118,7 @@ def _run_pipeline(use_llm: bool = True) -> dict:
 
 
 def _run_pipeline_background(use_llm: bool) -> None:
-    global _pipeline_running, _last_run_time, _last_run_error
+    global _last_run_time, _last_run_error
     try:
         logger.info("Background pipeline started (use_llm=%s)", use_llm)
         _run_pipeline(use_llm=use_llm)
@@ -99,27 +129,7 @@ def _run_pipeline_background(use_llm: bool) -> None:
         _last_run_error = str(exc)
         logger.error("Background pipeline failed: %s", exc)
     finally:
-        _pipeline_running = False
-
-
-# ---------------------------------------------------------------------------
-# Startup — run the pipeline once so results are ready immediately
-# ---------------------------------------------------------------------------
-@app.on_event("startup")
-async def startup_event():
-    global _pipeline_running, _last_run_time
-    if not RESULTS_PATH.exists():
-        logger.info("No existing results found — running initial pipeline on startup")
-        _pipeline_running = True
-        thread = threading.Thread(
-            target=_run_pipeline_background,
-            args=(bool(os.environ.get("ANTHROPIC_API_KEY")),),
-            daemon=True,
-        )
-        thread.start()
-    else:
-        logger.info("Existing results found at %s — skipping startup run", RESULTS_PATH)
-        _last_run_time = RESULTS_PATH.stat().st_mtime
+        _pipeline_running.clear()   # mark idle — atomic on threading.Event
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +141,7 @@ def health():
     """Liveness check for Render and other platforms."""
     return {
         "status": "ok",
-        "pipeline_running": _pipeline_running,
+        "pipeline_running": _pipeline_running.is_set(),
         "last_run_time": _last_run_time,
         "results_exist": RESULTS_PATH.exists(),
     }
@@ -152,8 +162,7 @@ def get_results():
     The dashboard calls this endpoint on load and every 30 seconds
     (replaces the static data.js approach used in the local file version).
     """
-    if _pipeline_running and not RESULTS_PATH.exists():
-        # Pipeline is running for the first time — return a loading state
+    if _pipeline_running.is_set() and not RESULTS_PATH.exists():
         return JSONResponse(content={
             "loading": True,
             "message": "Pipeline is running, please wait...",
@@ -172,7 +181,7 @@ def get_results():
 
     payload["meta"] = {
         "last_run_time": _last_run_time,
-        "pipeline_running": _pipeline_running,
+        "pipeline_running": _pipeline_running.is_set(),
         "last_run_error": _last_run_error,
     }
     return JSONResponse(content=payload)
@@ -193,13 +202,13 @@ def run_pipeline(
     """
     global _pipeline_running
 
-    if _pipeline_running:
+    if _pipeline_running.is_set():
         return JSONResponse(
             status_code=202,
             content={"message": "Pipeline already running. Poll /health for status."},
         )
 
-    _pipeline_running = True
+    _pipeline_running.set()
     background_tasks.add_task(_run_pipeline_background, use_llm)
     logger.info("Pipeline run triggered via POST /run (use_llm=%s)", use_llm)
 

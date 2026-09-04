@@ -9,9 +9,55 @@
 ![SQL](https://img.shields.io/badge/SQL-SQLGlot-blueviolet?style=for-the-badge)
 ![Dashboard](https://img.shields.io/badge/Dashboard-Interactive-green?style=for-the-badge)
 ![Pydantic](https://img.shields.io/badge/Pydantic-v2-red?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-39%20passing-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
 </p>
+
+---
+
+## Live Demo
+
+> **[metricguard.onrender.com](https://metricguard.onrender.com)** — deployed on Render free tier *(may take ~20s to wake from sleep)*
+
+<!--
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  HOW TO ADD THE DEMO GIF                                        │
+  │                                                                 │
+  │  1. Run the app locally:                                        │
+  │       uvicorn src.app:app --reload --port 8000                  │
+  │       Open http://localhost:8000                                │
+  │                                                                 │
+  │  2. Record a ~60 second screen capture showing:                 │
+  │       a) Dashboard loading with 4 conflict cards                │
+  │       b) Click a team filter chip (e.g. "Finance")              │
+  │       c) Toggle sort from Risk to Similarity                    │
+  │       d) Click "Re-run pipeline" button                         │
+  │       e) Watch the auto-refresh countdown + results update      │
+  │                                                                 │
+  │  3. Convert to GIF (free tools):                                │
+  │       • Windows: ShareX (free, open source)                     │
+  │       • Any OS:  ScreenToGif, Kap (Mac), peek (Linux)           │
+  │       • Online:  ezgif.com (upload MP4 → convert)               │
+  │       Keep under 10MB — GitHub renders GIFs inline              │
+  │                                                                 │
+  │  4. Save as:  assets/demo.gif                                   │
+  │       mkdir assets && move your_recording.gif assets/demo.gif   │
+  │                                                                 │
+  │  5. Replace the placeholder below with the real embed:          │
+  │       <img src="assets/demo.gif" alt="MetricGuard demo" .../>   │
+  └─────────────────────────────────────────────────────────────────┘
+-->
+
+<p align="center">
+  <img
+    src="assets/demo.gif"
+    alt="MetricGuard — interactive dashboard demo: team filters, sort toggle, Re-run pipeline"
+    width="900"
+  />
+</p>
+
+> *Dashboard showing 4 conflict groups across 6 teams — filterable by team, sortable by trust-risk or similarity score, with live auto-refresh every 30 seconds.*
 
 > **Detects when the same business metric is defined differently across teams, explains why dashboards disagree, and recommends the canonical definition — automatically.**
 <p align="center">

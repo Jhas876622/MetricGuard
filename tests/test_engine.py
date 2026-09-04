@@ -334,3 +334,82 @@ class TestAvgSimilarityGuard:
         pair_sims = [sim[i][j] for i in group for j in group if i < j]
         avg_sim = float(np.mean(pair_sims)) if pair_sims else 1.0
         assert abs(avg_sim - 0.8) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# 8. merge_exact_name_duplicates
+# ---------------------------------------------------------------------------
+
+class TestMergeExactNameDuplicates:
+    """
+    Validates the safety-net that catches same-named metrics which fall below
+    SIMILARITY_THRESHOLD on the TF-IDF fallback path.
+    """
+
+    def _groups_as_sets(self, groups: list[list[int]]) -> list[frozenset]:
+        return [frozenset(g) for g in groups]
+
+    def test_same_name_pair_merged_even_when_not_in_any_group(self):
+        """
+        Two metrics sharing metric_name but absent from similarity groups
+        (sim below threshold on TF-IDF) must be merged into a group.
+        """
+        from engine import merge_exact_name_duplicates
+        metrics = [
+            make_metric(id="m1", metric_name="conversion_rate"),
+            make_metric(id="m2", metric_name="conversion_rate"),
+            make_metric(id="m3", metric_name="revenue"),
+        ]
+        groups = []   # empty — similarity didn't find them
+        result = merge_exact_name_duplicates(metrics, groups)
+        sets = self._groups_as_sets(result)
+        assert frozenset({0, 1}) in sets
+
+    def test_existing_group_preserved(self):
+        """Metrics already grouped by similarity must stay grouped."""
+        from engine import merge_exact_name_duplicates
+        metrics = [
+            make_metric(id="m1", metric_name="revenue"),
+            make_metric(id="m2", metric_name="revenue_monthly"),
+            make_metric(id="m3", metric_name="revenue"),
+        ]
+        groups = [[0, 1]]   # m1 and m2 already grouped by similarity
+        result = merge_exact_name_duplicates(metrics, groups)
+        # m1(0) and m3(2) share exact name — all three should now be together
+        sets = self._groups_as_sets(result)
+        merged = next((s for s in sets if 0 in s), set())
+        assert 1 in merged and 2 in merged
+
+    def test_no_merge_when_names_differ(self):
+        """Different metric names must not be merged by this function."""
+        from engine import merge_exact_name_duplicates
+        metrics = [
+            make_metric(id="m1", metric_name="revenue"),
+            make_metric(id="m2", metric_name="churn_rate"),
+        ]
+        groups = []
+        result = merge_exact_name_duplicates(metrics, groups)
+        assert result == []   # no groups — nothing to merge
+
+    def test_name_comparison_is_case_insensitive_after_strip(self):
+        """metric_name is .strip().lower() compared — whitespace/case ignored."""
+        from engine import merge_exact_name_duplicates
+        metrics = [
+            make_metric(id="m1", metric_name="Conversion_Rate"),
+            make_metric(id="m2", metric_name="conversion_rate"),
+        ]
+        groups = []
+        result = merge_exact_name_duplicates(metrics, groups)
+        sets = self._groups_as_sets(result)
+        assert frozenset({0, 1}) in sets
+
+    def test_returns_empty_when_all_singletons_different_names(self):
+        """No names shared, no groups → result is empty."""
+        from engine import merge_exact_name_duplicates
+        metrics = [
+            make_metric(id="m1", metric_name="revenue"),
+            make_metric(id="m2", metric_name="churn"),
+            make_metric(id="m3", metric_name="mau"),
+        ]
+        result = merge_exact_name_duplicates(metrics, [])
+        assert result == []
