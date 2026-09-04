@@ -63,14 +63,21 @@ async def lifespan(app: FastAPI):
     """
     Lifespan handler (replaces deprecated @app.on_event("startup")).
     Runs the pipeline once on startup if no results exist yet.
+
+    On Render free tier the neural model download can stall.
+    Setting HF_HUB_OFFLINE=1 in the environment forces TF-IDF fallback
+    so the pipeline always completes within a few seconds.
     """
     global _last_run_time
     if not RESULTS_PATH.exists():
         logger.info("No existing results — running initial pipeline on startup")
+        # Run with use_llm=False on startup so the server responds immediately.
+        # The user can trigger a full LLM run via POST /run once the server is up.
+        use_llm = bool(os.environ.get("ANTHROPIC_API_KEY"))
         _pipeline_running.set()
         thread = threading.Thread(
             target=_run_pipeline_background,
-            args=(bool(os.environ.get("ANTHROPIC_API_KEY")),),
+            args=(use_llm,),
             daemon=True,
         )
         thread.start()

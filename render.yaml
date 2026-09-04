@@ -7,6 +7,12 @@ services:
     healthCheckPath: /health
     envVars:
       - key: ANTHROPIC_API_KEY
-        sync: false        # set manually in Render dashboard — never committed
+        sync: false          # set manually in Render dashboard — never committed
       - key: PYTHON_VERSION
         value: "3.12"
+      - key: HF_HUB_OFFLINE
+        value: "1"           # force TF-IDF fallback — avoids 90MB model download
+                             # on Render free tier (512MB RAM, slow cold start)
+                             # Remove this var if you want neural embeddings
+      - key: TRANSFORMERS_OFFLINE
+        value: "1"           # belt-and-suspenders: also block transformers downloads
