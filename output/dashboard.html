@@ -4,1284 +4,1212 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetricGuard — Metric Trust Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── Design Tokens ─────────────────────────────────────────────────────── */
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
 :root {
-  --bg:      #070c14;
-  --surface: #0d1825;
-  --card:    #111f2e;
-  --card2:   #162538;
-  --border:  #1a2d42;
-  --border2: #254360;
-  --dim:     #5e7a96;
-  --muted:   #8fa3b8;
-  --text:    #c2d3e4;
-  --bright:  #edf4fb;
-  --safe:    #22c55e;
-  --warn:    #f59e0b;
-  --danger:  #f43f5e;
-  --info:    #38bdf8;
-  --accent:  #3b82f6;
-  --accent2: #6366f1;
-  --glow:    rgba(59,130,246,.12);
-  --mono: 'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
-  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;
-  --r: 12px; --rs: 8px; --rx: 6px;
-  --shadow: 0 8px 32px rgba(0,0,0,.5);
-  --shadow-sm: 0 2px 12px rgba(0,0,0,.35);
+  /* Warm neutral base */
+  --bg:        #faf9f7;
+  --bg2:       #f4f1ec;
+  --bg3:       #ece8e0;
+  --surface:   #ffffff;
+  --surface2:  #fdfcfa;
+
+  /* Borders */
+  --border:    #e8e2d9;
+  --border2:   #d9d0c4;
+  --border3:   #c9bfb0;
+
+  /* Text */
+  --tx1:       #1a1714;
+  --tx2:       #3d3830;
+  --tx3:       #6b6358;
+  --tx4:       #998f84;
+
+  /* Semantic — warm palette */
+  --red:       #e53e3e;
+  --red-bg:    #fff5f5;
+  --red-border:#fed7d7;
+  --orange:    #dd6b20;
+  --orange-bg: #fffaf0;
+  --orange-border:#fbd38d;
+  --green:     #2f855a;
+  --green-bg:  #f0fff4;
+  --green-border:#9ae6b4;
+  --blue:      #2b6cb0;
+  --blue-bg:   #ebf8ff;
+  --blue-border:#bee3f8;
+  --purple:    #6b46c1;
+  --purple-bg: #faf5ff;
+  --purple-border:#d6bcfa;
+
+  /* Brand — warm amber/terracotta */
+  --brand:       #c05621;
+  --brand-light: #ed8936;
+  --brand-bg:    #fffbf5;
+  --brand-hover: #9c4221;
+
+  /* Accent */
+  --accent:    #2b6cb0;
+  --accent-bg: #ebf8ff;
+
+  /* Typography */
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+
+  /* Radii */
+  --r1: 16px; --r2: 12px; --r3: 8px; --r4: 6px;
+
+  /* Shadows — warm tinted */
+  --shadow-xs: 0 1px 2px rgba(60,40,10,.06);
+  --shadow-sm: 0 2px 8px rgba(60,40,10,.08), 0 1px 2px rgba(60,40,10,.04);
+  --shadow-md: 0 4px 16px rgba(60,40,10,.1), 0 2px 4px rgba(60,40,10,.06);
+  --shadow-lg: 0 8px 32px rgba(60,40,10,.12), 0 4px 8px rgba(60,40,10,.06);
+
+  /* Transitions */
+  --ease: cubic-bezier(.25,.46,.45,.94);
 }
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
 body {
-  background:var(--bg); color:var(--text);
-  font-family:var(--sans); line-height:1.6; min-height:100vh;
+  font-family:var(--font); background:var(--bg); color:var(--tx2);
+  line-height:1.6; min-height:100vh;
   background-image:
-    radial-gradient(ellipse 70% 35% at 50% -5%, rgba(59,130,246,.07),transparent),
-    radial-gradient(ellipse 35% 50% at 92% 55%, rgba(99,102,241,.04),transparent);
+    radial-gradient(ellipse 60% 40% at 80% -10%, rgba(192,86,33,.05), transparent),
+    radial-gradient(ellipse 40% 30% at 10% 90%, rgba(237,137,54,.04), transparent);
 }
 
-/* ── Layout ────────────────────────────────────────────────────────────── */
-.wrap { max-width:1120px; margin:0 auto; padding:0 20px 80px; }
+/* ── Skip link ───────────────────────────────────────────────────────────── */
+.skip { position:absolute; top:-48px; left:16px; z-index:9999;
+  background:var(--brand); color:#fff; padding:8px 16px; border-radius:var(--r4);
+  font-size:13px; font-weight:600; text-decoration:none; transition:top .15s; }
+.skip:focus { top:0; outline:3px solid var(--brand-light); outline-offset:2px; }
 
-/* ── Skip link (a11y) ──────────────────────────────────────────────────── */
-.skip-link {
-  position:absolute; top:-48px; left:16px; z-index:9999;
-  background:var(--accent); color:#fff; padding:8px 16px;
-  border-radius:0 0 var(--rs) var(--rs); font-size:13px; font-weight:600;
-  text-decoration:none; transition:top .15s;
-}
-.skip-link:focus { top:0; outline:3px solid var(--accent2); outline-offset:2px; }
+/* ── Wrap ────────────────────────────────────────────────────────────────── */
+.wrap { max-width:1160px; margin:0 auto; padding:0 24px 80px; }
 
-/* ── Top bar ───────────────────────────────────────────────────────────── */
-.topbar {
+/* ── Navbar ──────────────────────────────────────────────────────────────── */
+.nav {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px 0; border-bottom:1px solid var(--border);
-  margin-bottom:32px; gap:10px; flex-wrap:wrap;
+  margin-bottom:36px; gap:12px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:100;
+  background:rgba(250,249,247,.95); backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
 }
-.logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
-.logo-icon {
-  width:32px; height:32px; border-radius:8px; flex-shrink:0;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
+.nav-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.nav-mark {
+  width:34px; height:34px; border-radius:10px; flex-shrink:0;
+  background:linear-gradient(135deg, var(--brand), var(--brand-light));
   display:grid; place-items:center;
-  font-size:15px; font-weight:800; color:#fff;
-  box-shadow:0 0 16px rgba(59,130,246,.35);
+  font-family:var(--mono); font-size:14px; font-weight:700; color:#fff;
+  box-shadow:0 2px 8px rgba(192,86,33,.35);
+  letter-spacing:-.02em;
 }
-.logo-text { font-size:17px; font-weight:700; color:var(--bright); letter-spacing:-.03em; }
-.logo-text em { color:var(--danger); font-style:normal; }
-.topbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.refresh-badge {
-  display:flex; align-items:center; gap:6px; padding:5px 11px;
-  border-radius:20px; background:var(--surface); border:1px solid var(--border);
-  font-family:var(--mono); font-size:11px; color:var(--dim); white-space:nowrap;
-}
-.pulse {
-  width:7px; height:7px; border-radius:50%; background:var(--safe);
-  flex-shrink:0; animation:pulse 2s infinite;
-}
-.pulse.running { background:var(--warn); }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
-.run-btn {
+.nav-name { font-size:17px; font-weight:700; color:var(--tx1); letter-spacing:-.03em; }
+.nav-name em { color:var(--brand); font-style:normal; }
+.nav-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* Status pill */
+.status-pill {
   display:inline-flex; align-items:center; gap:6px;
-  padding:8px 16px; border-radius:var(--rs);
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  border:none; color:#fff; font-size:13px; font-weight:600;
-  cursor:pointer; transition:transform .15s,box-shadow .15s; white-space:nowrap;
-  box-shadow:0 2px 10px rgba(59,130,246,.35);
-}
-.run-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 18px rgba(59,130,246,.5); }
-.run-btn:focus-visible { outline:3px solid var(--accent2); outline-offset:3px; }
-.run-btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
-.run-btn svg { width:13px; height:13px; flex-shrink:0; }
-
-/* ── Hero ──────────────────────────────────────────────────────────────── */
-.hero { margin-bottom:28px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-.hero-left { flex:1; min-width:0; }
-.hero-eyebrow {
-  font-family:var(--mono); font-size:10px; letter-spacing:.28em;
-  text-transform:uppercase; color:var(--accent); margin-bottom:8px;
-  display:flex; align-items:center; gap:8px;
-}
-.hero-eyebrow::before { content:''; width:18px; height:2px; background:var(--accent); border-radius:2px; flex-shrink:0; }
-.hero h1 {
-  font-size:clamp(24px,4.5vw,38px); font-weight:800;
-  color:var(--bright); letter-spacing:-.04em; line-height:1.1;
-}
-.hero h1 em { color:var(--danger); font-style:normal; }
-.hero-about {
-  display:inline-flex; align-items:center; gap:4px; margin-top:8px;
-  font-size:12px; color:var(--dim); background:none; border:none;
-  cursor:pointer; padding:0; text-decoration:underline; text-decoration-style:dotted;
-  transition:color .15s;
-}
-.hero-about:hover { color:var(--accent); }
-.hero-about:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
-
-/* About modal */
-.modal-backdrop {
-  display:none; position:fixed; inset:0; z-index:500;
-  background:rgba(7,12,20,.8); backdrop-filter:blur(4px);
-  align-items:center; justify-content:center; padding:20px;
-}
-.modal-backdrop.open { display:flex; }
-.modal {
-  background:var(--card); border:1px solid var(--border2);
-  border-radius:var(--r); padding:28px 32px; max-width:520px; width:100%;
-  box-shadow:var(--shadow); position:relative;
-}
-.modal h2 { font-size:17px; color:var(--bright); font-weight:700; margin-bottom:12px; }
-.modal p  { font-size:13px; color:var(--muted); line-height:1.75; margin-bottom:10px; }
-.modal-close {
-  position:absolute; top:14px; right:14px; background:none; border:none;
-  color:var(--dim); cursor:pointer; font-size:20px; line-height:1; padding:4px;
-  border-radius:4px; transition:color .15s;
-}
-.modal-close:hover { color:var(--bright); }
-.modal-close:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-
-/* ── KPI Grid ──────────────────────────────────────────────────────────── */
-.kpi-grid {
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:10px; margin-bottom:28px;
-}
-@media(max-width:900px) { .kpi-grid { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:480px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } }
-.kpi-card {
+  padding:5px 12px; border-radius:20px;
   background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--r); padding:16px 14px; position:relative; overflow:hidden;
-  transition:border-color .2s, box-shadow .2s;
+  font-family:var(--mono); font-size:11px; font-weight:500; color:var(--tx3);
+  box-shadow:var(--shadow-xs);
 }
-.kpi-card:hover { border-color:var(--border2); box-shadow:var(--shadow-sm); }
-.kpi-stripe {
-  position:absolute; left:0; top:0; bottom:0; width:3px;
-  background:var(--accent); border-radius:0 2px 2px 0;
-}
-.kpi-stripe.d { background:var(--danger); }
-.kpi-stripe.w { background:var(--warn); }
-.kpi-n {
-  font-family:var(--mono); font-weight:700; color:var(--bright); line-height:1;
-  margin-bottom:7px; font-size:clamp(20px,3vw,30px);
-}
-.kpi-n.d { color:var(--danger); }
-.kpi-l { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.1em; font-weight:500; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0; animation:pulse 2s infinite; }
+.dot.running { background:var(--orange); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
 
-/* ── Controls ──────────────────────────────────────────────────────────── */
-.controls-row {
-  display:flex; flex-wrap:wrap; align-items:center;
-  gap:8px; margin-bottom:18px;
+/* Primary button */
+.btn-primary {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 18px; border-radius:var(--r3);
+  background:var(--brand); border:none; color:#fff;
+  font-family:var(--font); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .18s var(--ease);
+  box-shadow:0 1px 3px rgba(192,86,33,.4), 0 4px 12px rgba(192,86,33,.25);
+  white-space:nowrap;
 }
-.ctrl-label { font-family:var(--mono); font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.12em; white-space:nowrap; }
-.chips { display:flex; flex-wrap:wrap; gap:5px; }
-.chip {
-  font-family:var(--mono); font-size:11px; padding:4px 11px; border-radius:20px;
-  background:transparent; border:1px solid var(--border); color:var(--dim);
+.btn-primary:hover:not(:disabled) {
+  background:var(--brand-hover);
+  transform:translateY(-1px);
+  box-shadow:0 2px 8px rgba(192,86,33,.45), 0 6px 20px rgba(192,86,33,.3);
+}
+.btn-primary:active:not(:disabled) { transform:translateY(0); }
+.btn-primary:focus-visible { outline:3px solid var(--brand-light); outline-offset:3px; }
+.btn-primary:disabled { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-primary svg { width:13px; height:13px; flex-shrink:0; }
+
+/* Ghost button */
+.btn-ghost {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:var(--r4);
+  background:transparent; border:1px solid var(--border2);
+  color:var(--tx3); font-family:var(--font); font-size:12px; font-weight:500;
   cursor:pointer; transition:all .15s; white-space:nowrap;
 }
-.chip:hover { border-color:var(--accent); color:var(--accent); }
-.chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
-.chip.all-chip.active { background:var(--border2); border-color:var(--border2); color:var(--text); }
+.btn-ghost:hover { background:var(--bg2); border-color:var(--border3); color:var(--tx2); }
+.btn-ghost:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.hero { margin-bottom:32px; display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.hero-eyebrow {
+  display:inline-flex; align-items:center; gap:8px; margin-bottom:10px;
+  font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--brand);
+}
+.hero-eyebrow::before { content:''; width:24px; height:2px; background:var(--brand); border-radius:2px; flex-shrink:0; }
+.hero h1 {
+  font-size:clamp(26px,4.5vw,40px); font-weight:800; color:var(--tx1);
+  letter-spacing:-.04em; line-height:1.1;
+}
+.hero h1 em { color:var(--brand); font-style:normal; }
+.hero-meta { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+.hero-sub { font-size:13px; color:var(--tx3); line-height:1.6; }
+.hero-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:600; font-family:var(--mono);
+}
+.hero-badge.warm { background:var(--orange-bg); border:1px solid var(--orange-border); color:var(--orange); }
+.about-btn {
+  font-size:12px; font-weight:500; color:var(--accent);
+  background:none; border:none; cursor:pointer; padding:0;
+  text-decoration:underline; text-decoration-style:dotted;
+  transition:color .15s;
+}
+.about-btn:hover { color:var(--brand); }
+.about-btn:focus-visible { outline:2px solid var(--brand); outline-offset:2px; border-radius:3px; }
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.modal-bg {
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(26,23,20,.5); backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-bg.open { display:flex; animation:fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r1); padding:32px; max-width:520px; width:100%;
+  box-shadow:var(--shadow-lg); position:relative;
+  animation:slideUp .2s var(--ease);
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.modal-box h2 { font-size:18px; font-weight:700; color:var(--tx1); margin-bottom:12px; }
+.modal-box p  { font-size:13px; color:var(--tx3); line-height:1.8; margin-bottom:10px; }
+.modal-close {
+  position:absolute; top:16px; right:16px; background:var(--bg2);
+  border:1px solid var(--border); border-radius:var(--r4); color:var(--tx3);
+  cursor:pointer; font-size:15px; width:28px; height:28px;
+  display:grid; place-items:center; transition:all .15s;
+}
+.modal-close:hover { background:var(--bg3); color:var(--tx1); }
+.modal-close:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+
+/* ── KPI Grid ────────────────────────────────────────────────────────────── */
+.kpi-grid {
+  display:grid; grid-template-columns:repeat(6,1fr);
+  gap:12px; margin-bottom:32px;
+}
+@media(max-width:960px) { .kpi-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:500px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } }
+.kpi {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); padding:18px 16px;
+  box-shadow:var(--shadow-xs); position:relative; overflow:hidden;
+  transition:border-color .2s, box-shadow .2s;
+}
+.kpi:hover { border-color:var(--border2); box-shadow:var(--shadow-sm); }
+.kpi-accent {
+  position:absolute; bottom:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg, var(--brand), var(--brand-light));
+}
+.kpi-accent.ok  { background:linear-gradient(90deg, var(--green), #68d391); }
+.kpi-accent.bad { background:linear-gradient(90deg, var(--red), #fc8181); }
+.kpi-n {
+  font-family:var(--mono); font-weight:700; color:var(--tx1);
+  line-height:1; margin-bottom:6px;
+  font-size:clamp(22px,2.8vw,32px);
+}
+.kpi-n.bad { color:var(--red); }
+.kpi-l { font-size:11px; font-weight:500; color:var(--tx4); text-transform:uppercase; letter-spacing:.08em; }
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.divider {
+  display:flex; align-items:center; gap:12px; margin-bottom:16px;
+}
+.divider-label {
+  font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--tx4); white-space:nowrap;
+}
+.divider-line { flex:1; height:1px; background:var(--border); }
+
+/* ── Controls bar ────────────────────────────────────────────────────────── */
+.controls {
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:20px;
+  padding:12px 16px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); box-shadow:var(--shadow-xs);
+}
+.ctrl-label { font-size:11px; font-weight:600; color:var(--tx4); text-transform:uppercase; letter-spacing:.1em; white-space:nowrap; }
+.ctrl-sep { width:1px; height:16px; background:var(--border2); flex-shrink:0; }
+.chips { display:flex; flex-wrap:wrap; gap:4px; }
+.chip {
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  padding:4px 11px; border-radius:20px;
+  background:var(--bg2); border:1px solid var(--border);
+  color:var(--tx3); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.chip:hover { background:var(--bg3); border-color:var(--border2); color:var(--tx2); }
+.chip:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+.chip.active {
+  background:var(--brand); border-color:var(--brand);
+  color:#fff; font-weight:600;
+  box-shadow:0 1px 4px rgba(192,86,33,.35);
+}
+.chip.all.active { background:var(--tx2); border-color:var(--tx2); }
 .sort-btn {
-  font-family:var(--mono); font-size:11px; padding:4px 11px;
-  border-radius:var(--rx); background:var(--surface); border:1px solid var(--border);
-  color:var(--dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+  font-family:var(--font); font-size:12px; font-weight:500;
+  padding:5px 12px; border-radius:var(--r4);
+  background:var(--bg2); border:1px solid var(--border);
+  color:var(--tx3); cursor:pointer; transition:all .15s; white-space:nowrap;
 }
-.sort-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(59,130,246,.08); }
-.sort-btn:hover { border-color:var(--accent); color:var(--accent); }
-.sort-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.ctrl-sep { width:1px; height:18px; background:var(--border); flex-shrink:0; }
+.sort-btn.active { background:var(--brand-bg); border-color:var(--brand); color:var(--brand); font-weight:600; }
+.sort-btn:hover:not(.active) { background:var(--bg3); border-color:var(--border2); color:var(--tx2); }
+.sort-btn:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
 .spacer { flex:1; min-width:8px; }
-.count-badge {
-  font-family:var(--mono); font-size:11px; color:var(--dim);
-  padding:4px 10px; background:var(--surface); border:1px solid var(--border); border-radius:20px;
+.count-tag {
+  font-family:var(--mono); font-size:11px; font-weight:500; color:var(--tx4);
+  padding:4px 10px; background:var(--bg2); border:1px solid var(--border); border-radius:20px;
 }
 
-/* ── Section title ─────────────────────────────────────────────────────── */
-.sec-title {
-  font-family:var(--mono); font-size:10px; letter-spacing:.2em;
-  text-transform:uppercase; color:var(--dim);
-  margin-bottom:14px; display:flex; align-items:center; gap:10px;
+/* ── Onboarding ──────────────────────────────────────────────────────────── */
+.onboarding {
+  display:flex; align-items:flex-start; gap:14px;
+  padding:16px 20px; margin-bottom:24px;
+  background:linear-gradient(135deg, var(--brand-bg), var(--orange-bg));
+  border:1px solid var(--orange-border); border-radius:var(--r2);
+  box-shadow:var(--shadow-xs);
 }
-.sec-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.onboarding.hidden { display:none; }
+.ob-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.ob-body { flex:1; }
+.ob-title { font-size:14px; font-weight:600; color:var(--tx1); margin-bottom:4px; }
+.ob-text  { font-size:13px; color:var(--tx3); line-height:1.65; }
+.ob-text code {
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  background:rgba(192,86,33,.1); color:var(--brand);
+  padding:1px 6px; border-radius:4px;
+}
+.ob-close {
+  background:none; border:none; cursor:pointer; color:var(--tx4);
+  font-size:16px; line-height:1; padding:2px; border-radius:4px; flex-shrink:0;
+  transition:color .15s;
+}
+.ob-close:hover { color:var(--tx1); }
+.ob-close:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
 
-/* ── Loading ───────────────────────────────────────────────────────────── */
-.loading-state {
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+.loading {
   display:flex; flex-direction:column; align-items:center;
-  justify-content:center; padding:80px 24px; gap:18px;
+  padding:80px 24px; gap:18px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); box-shadow:var(--shadow-xs);
 }
 .spinner {
   width:40px; height:40px; border-radius:50%;
-  border:3px solid var(--border); border-top-color:var(--accent);
-  animation:spin .75s linear infinite;
+  border:3px solid var(--border2); border-top-color:var(--brand);
+  animation:spin .8s linear infinite;
 }
-@keyframes spin { to { transform:rotate(360deg); } }
-.loading-title { font-size:16px; font-weight:600; color:var(--bright); }
-.loading-sub   { font-size:13px; color:var(--dim); text-align:center; max-width:320px; }
-.elapsed-wrap  { width:220px; }
-.elapsed-bar   { width:100%; height:4px; background:var(--border); border-radius:2px; overflow:visible; }
-.elapsed-fill  {
-  height:100%; border-radius:2px;
-  background:linear-gradient(90deg,var(--accent),var(--accent2));
-  transition:width .6s ease;
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-title { font-size:16px; font-weight:600; color:var(--tx1); }
+.loading-sub   { font-size:13px; color:var(--tx3); text-align:center; max-width:300px; }
+.prog-wrap { width:200px; }
+.prog-track { height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.prog-fill {
+  height:100%; background:linear-gradient(90deg, var(--brand), var(--brand-light));
+  border-radius:2px; transition:width .6s var(--ease);
 }
-.elapsed-fill.pulsing { animation:barPulse 1.2s ease-in-out infinite; }
-@keyframes barPulse { 0%,100%{opacity:1} 50%{opacity:.45} }
-.elapsed-label { font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:5px; text-align:center; }
+.prog-fill.pulsing { animation:barPulse 1.2s ease-in-out infinite; }
+@keyframes barPulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.prog-label { font-family:var(--mono); font-size:10px; color:var(--tx4); text-align:center; margin-top:5px; }
 
-/* ── Empty state ───────────────────────────────────────────────────────── */
-.empty-state { text-align:center; padding:60px 24px; color:var(--dim); font-size:13px; }
+/* ── Empty ───────────────────────────────────────────────────────────────── */
+.empty {
+  text-align:center; padding:64px 24px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); box-shadow:var(--shadow-xs);
+}
 .empty-icon  { font-size:36px; margin-bottom:10px; }
-.empty-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:6px; }
-.empty-state code {
-  font-family:var(--mono); font-size:12px; background:var(--surface);
-  padding:2px 7px; border-radius:4px; color:var(--muted);
+.empty-title { font-size:15px; font-weight:600; color:var(--tx1); margin-bottom:6px; }
+.empty-sub   { font-size:13px; color:var(--tx3); }
+.empty-sub code {
+  font-family:var(--mono); font-size:12px;
+  background:var(--bg2); padding:2px 6px; border-radius:4px; color:var(--tx2);
 }
 
-/* ── Conflict card ─────────────────────────────────────────────────────── */
+/* ── Conflict card ───────────────────────────────────────────────────────── */
 .card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:var(--r); margin-bottom:12px; overflow:hidden;
-  transition:border-color .2s, box-shadow .2s;
-  animation:fadeUp .3s ease both;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); margin-bottom:12px; overflow:hidden;
+  box-shadow:var(--shadow-sm);
+  transition:border-color .2s, box-shadow .2s, transform .15s;
+  animation:slideCard .3s var(--ease) both;
 }
-.card:hover { border-color:var(--border2); box-shadow:var(--shadow-sm); }
-.card.resolved { opacity:.38; }
-@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.card:hover { border-color:var(--border2); box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.card.resolved { opacity:.3; filter:grayscale(.4); }
+@keyframes slideCard { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* Risk accent on left edge */
+.card { border-left:3px solid transparent; }
+.card.critical { border-left-color:var(--red); }
+.card.warning  { border-left-color:var(--orange); }
+.card.low      { border-left-color:var(--green); }
+
 .card-head {
   display:flex; justify-content:space-between; align-items:flex-start;
-  gap:14px; padding:18px 20px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap;
+  gap:16px; padding:20px 22px 16px; border-bottom:1px solid var(--border);
+  flex-wrap:wrap; background:var(--surface2);
 }
 .card-left { flex:1; min-width:0; }
 .card-names {
-  font-family:var(--mono); font-size:15px; color:var(--bright); font-weight:700;
-  margin-bottom:9px; line-height:1.4;
+  font-family:var(--mono); font-size:15px; font-weight:700; color:var(--tx1);
+  margin-bottom:10px; line-height:1.4;
   display:flex; flex-wrap:wrap; align-items:baseline; gap:6px;
 }
-.name-item { white-space:nowrap; }
-.name-sep  { color:var(--dim); font-weight:400; font-size:11px; flex-shrink:0; }
-.team-chips { display:flex; flex-wrap:wrap; gap:5px; }
-.team-chip {
-  font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:20px;
-  background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.2); color:var(--accent);
+.name-sep { color:var(--tx4); font-weight:400; font-size:11px; font-family:var(--font); }
+.tteams { display:flex; flex-wrap:wrap; gap:5px; }
+.tteam {
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  padding:2px 9px; border-radius:20px;
+  background:var(--blue-bg); border:1px solid var(--blue-border); color:var(--blue);
 }
-.card-right {
-  display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;
-}
-/* Risk gauge */
-.gauge { text-align:center; min-width:80px; }
-.gauge-val { font-family:var(--mono); font-size:26px; font-weight:800; line-height:1; }
-.gauge-risk-label {
-  display:inline-flex; align-items:center; gap:4px;
-  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em;
-  margin-top:4px; padding:2px 7px; border-radius:20px;
-}
-/* risk label variants — color + shape (not color-only, satisfies a11y) */
-.risk-critical { color:#fff; background:rgba(244,63,94,.25); border:1px solid rgba(244,63,94,.5); }
-.risk-warning  { color:#fff; background:rgba(245,158,11,.2); border:1px solid rgba(245,158,11,.4); }
-.risk-low      { color:#fff; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.35); }
-.gauge-bar  { height:3px; border-radius:2px; background:var(--border); margin-top:7px; overflow:hidden; }
-.gauge-fill { height:100%; border-radius:2px; }
-.card-actions { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
-.action-btn {
-  font-size:11px; padding:4px 10px; border-radius:var(--rx);
-  border:1px solid var(--border); background:transparent; color:var(--dim);
-  cursor:pointer; transition:all .15s; white-space:nowrap; font-family:var(--mono);
-}
-.action-btn:hover { border-color:var(--safe); color:var(--safe); background:rgba(34,197,94,.07); }
-.action-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.card-body { padding:18px 20px; }
+.card-right { display:flex; flex-direction:column; align-items:flex-end; gap:10px; flex-shrink:0; }
 
-/* ── Problem list ──────────────────────────────────────────────────────── */
-.problems { list-style:none; margin-bottom:16px; }
+/* Risk badge */
+.risk-badge {
+  display:flex; flex-direction:column; align-items:center; gap:4px; min-width:72px;
+}
+.risk-number { font-family:var(--mono); font-size:28px; font-weight:800; line-height:1; }
+.risk-label {
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
+  padding:2px 8px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;
+}
+.risk-label.critical { background:var(--red-bg);    border:1px solid var(--red-border);    color:var(--red);    }
+.risk-label.warning  { background:var(--orange-bg);  border:1px solid var(--orange-border);  color:var(--orange); }
+.risk-label.low      { background:var(--green-bg);   border:1px solid var(--green-border);   color:var(--green);  }
+.risk-bar { width:72px; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; margin-top:2px; }
+.risk-fill { height:100%; border-radius:2px; }
+
+.card-actions { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+.act-btn {
+  font-size:11px; font-weight:500; padding:5px 11px; border-radius:var(--r4);
+  border:1px solid var(--border2); background:var(--bg2); color:var(--tx3);
+  cursor:pointer; transition:all .15s; white-space:nowrap; font-family:var(--font);
+}
+.act-btn:hover { border-color:var(--green-border); background:var(--green-bg); color:var(--green); }
+.act-btn:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+
+.card-body { padding:20px 22px; }
+
+/* Problems */
+.problems { list-style:none; margin-bottom:18px; }
 .problems li {
-  font-size:13px; padding:8px 0 8px 22px; position:relative;
-  border-bottom:1px dashed var(--border); color:var(--text); line-height:1.55;
+  display:flex; align-items:flex-start; gap:10px;
+  font-size:13px; padding:9px 0; border-bottom:1px solid var(--border);
+  color:var(--tx2); line-height:1.5;
 }
 .problems li:last-child { border-bottom:none; }
-.problems li::before {
-  content:''; position:absolute; left:1px; top:15px;
-  width:8px; height:8px; border-radius:50%; background:var(--warn);
-  border:2px solid var(--card); /* ring makes it visible for color-blind */
+.prob-icon {
+  width:20px; height:20px; border-radius:50%; flex-shrink:0; margin-top:1px;
+  display:grid; place-items:center; font-size:10px; font-weight:700;
+  background:var(--orange-bg); border:1px solid var(--orange-border); color:var(--orange);
 }
 
-/* ── Definition panels ─────────────────────────────────────────────────── */
-.defs { display:grid; gap:8px; margin-bottom:16px; }
+/* Definitions grid */
+.defs { display:grid; gap:10px; margin-bottom:18px; }
 @media(min-width:700px) { .defs { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); } }
 .def {
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--rs); padding:13px 15px; transition:border-color .15s;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:var(--r3); padding:14px 16px;
+  transition:border-color .15s, box-shadow .15s;
 }
-.def:hover { border-color:var(--border2); }
-.def-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; gap:6px; flex-wrap:wrap; }
-.def-team { font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:600; }
-.def-name { font-family:var(--mono); font-size:11px; color:var(--dim); }
-.def-desc { font-size:12px; color:var(--text); margin-bottom:9px; line-height:1.6; }
+.def:hover { border-color:var(--border2); box-shadow:var(--shadow-xs); }
+.def-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:6px; flex-wrap:wrap; }
+.def-team { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--brand); }
+.def-name { font-family:var(--mono); font-size:11px; color:var(--tx4); }
+.def-desc { font-size:12px; color:var(--tx2); margin-bottom:9px; line-height:1.6; }
 .def-sql-wrap { position:relative; }
 .def-sql {
-  font-family:var(--mono); font-size:11px; color:var(--muted);
-  background:#050a12; border:1px solid var(--border); border-radius:var(--rx);
-  padding:10px 38px 10px 12px; overflow-x:auto; white-space:pre-wrap;
-  line-height:1.7; word-break:break-all;
+  font-family:var(--mono); font-size:11px; line-height:1.75;
+  color:var(--tx3); background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--r4); padding:10px 40px 10px 12px;
+  overflow-x:auto; white-space:pre-wrap; word-break:break-all;
 }
-/* copy button on SQL blocks */
 .copy-btn {
   position:absolute; top:6px; right:6px;
-  background:var(--surface); border:1px solid var(--border); border-radius:4px;
-  color:var(--dim); font-size:11px; padding:3px 7px; cursor:pointer;
-  font-family:var(--mono); transition:all .15s; line-height:1.4; white-space:nowrap;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r4);
+  color:var(--tx4); font-family:var(--mono); font-size:10px; font-weight:500;
+  padding:3px 8px; cursor:pointer; transition:all .15s; white-space:nowrap;
 }
-.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
-.copy-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.copy-btn.copied { border-color:var(--safe); color:var(--safe); }
+.copy-btn:hover { border-color:var(--brand); color:var(--brand); background:var(--brand-bg); }
+.copy-btn.ok  { border-color:var(--green-border); color:var(--green); background:var(--green-bg); }
+.copy-btn:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
 
-/* ── Recommendation ────────────────────────────────────────────────────── */
+/* Recommendation */
 .rec {
-  border:1px solid rgba(59,130,246,.25); border-radius:var(--rs); padding:16px 18px;
-  background:linear-gradient(135deg,rgba(59,130,246,.05),rgba(99,102,241,.03));
+  border:1px solid var(--blue-border); border-radius:var(--r3);
+  padding:16px 18px;
+  background:linear-gradient(135deg, var(--blue-bg), #f0f9ff);
 }
 .rec-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:9px; flex-wrap:wrap; }
-.rec-label { font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); font-weight:600; }
-.rec-match { font-family:var(--mono); font-size:10px; color:var(--dim); background:rgba(59,130,246,.1); padding:2px 8px; border-radius:20px; }
-.rec-concept { font-size:14px; font-weight:700; color:var(--bright); margin-bottom:7px; }
-.rec-text { font-size:13px; color:var(--text); white-space:pre-wrap; line-height:1.75; }
-.rec-owner { font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.rec-label {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--blue);
+}
+.rec-sim { font-family:var(--mono); font-size:10px; font-weight:500; color:var(--tx4);
+  background:var(--bg2); border:1px solid var(--border); padding:2px 8px; border-radius:20px; }
+.rec-concept { font-size:14px; font-weight:700; color:var(--tx1); margin-bottom:7px; }
+.rec-text { font-size:13px; color:var(--tx2); white-space:pre-wrap; line-height:1.75; }
+.rec-owner { font-family:var(--mono); font-size:11px; color:var(--tx4); margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
 .rec-setup {
   display:flex; align-items:flex-start; gap:10px; padding:13px 15px;
-  background:rgba(245,158,11,.05); border:1px solid rgba(245,158,11,.2); border-radius:var(--rs);
+  background:var(--orange-bg); border:1px solid var(--orange-border); border-radius:var(--r3);
 }
 .rec-setup-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
-.rec-setup-text { font-size:12px; color:var(--muted); line-height:1.7; }
-.rec-setup-text code {
-  font-family:var(--mono); font-size:11px;
-  background:rgba(245,158,11,.15); padding:1px 5px; border-radius:3px; color:var(--warn);
-}
+.rec-setup-text { font-size:12px; color:var(--tx3); line-height:1.7; }
+.rec-setup-text code { font-family:var(--mono); font-size:11px; background:rgba(192,86,33,.08); padding:1px 5px; border-radius:3px; color:var(--brand); }
 
-/* ── Onboarding banner ─────────────────────────────────────────────────── */
-.onboarding {
-  background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(99,102,241,.06));
-  border:1px solid rgba(59,130,246,.22); border-radius:var(--r);
-  padding:18px 22px; margin-bottom:28px;
-  display:flex; align-items:flex-start; gap:14px;
+/* ── Add Metrics section ─────────────────────────────────────────────────── */
+.add-section { margin-top:48px; }
+.add-toggle {
+  display:flex; align-items:center; gap:12px;
+  padding:16px 20px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r2); cursor:pointer; transition:all .2s var(--ease);
+  box-shadow:var(--shadow-xs);
 }
-.onboarding.hidden { display:none; }
-.onboarding-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
-.onboarding-body { flex:1; }
-.onboarding-title { font-size:14px; font-weight:600; color:var(--bright); margin-bottom:5px; }
-.onboarding-text  { font-size:13px; color:var(--muted); line-height:1.7; }
-.onboarding-text code {
-  font-family:var(--mono); font-size:11px;
-  background:rgba(59,130,246,.12); padding:1px 5px; border-radius:3px; color:var(--accent);
+.add-toggle:hover { border-color:var(--border2); box-shadow:var(--shadow-sm); }
+.add-toggle:focus-visible { outline:2px solid var(--brand); outline-offset:2px; border-radius:var(--r2); }
+.add-toggle[aria-expanded="true"] { border-radius:var(--r2) var(--r2) 0 0; border-bottom-color:transparent; }
+.add-ico {
+  width:34px; height:34px; border-radius:var(--r3); flex-shrink:0;
+  background:linear-gradient(135deg, var(--brand-bg), var(--orange-bg));
+  border:1px solid var(--orange-border);
+  display:grid; place-items:center; font-size:16px;
 }
-.onboarding-close {
-  background:none; border:none; color:var(--dim); cursor:pointer;
-  font-size:18px; line-height:1; padding:2px 4px; flex-shrink:0; border-radius:4px;
-  transition:color .15s;
-}
-.onboarding-close:hover { color:var(--bright); }
-.onboarding-close:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-
-/* ── Add Metrics section ───────────────────────────────────────────────── */
-.add-section { margin-top:40px; margin-bottom:16px; }
-.add-header {
-  display:flex; align-items:center; gap:12px; padding:16px 20px;
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
-  cursor:pointer; transition:border-color .2s; user-select:none;
-}
-.add-header:hover { border-color:var(--border2); }
-.add-header:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r); }
-.add-header-icon {
-  width:32px; height:32px; border-radius:7px; flex-shrink:0;
-  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(99,102,241,.15));
-  border:1px solid rgba(59,130,246,.25);
-  display:grid; place-items:center; font-size:15px;
-}
-.add-header-text { flex:1; }
-.add-header-title { font-size:14px; font-weight:600; color:var(--bright); }
-.add-header-sub   { font-size:12px; color:var(--dim); margin-top:1px; }
-.add-chevron {
-  font-size:12px; color:var(--dim); transition:transform .2s; flex-shrink:0;
-}
-.add-header[aria-expanded="true"] .add-chevron { transform:rotate(90deg); }
+.add-text { flex:1; }
+.add-title { font-size:14px; font-weight:600; color:var(--tx1); }
+.add-sub   { font-size:12px; color:var(--tx4); margin-top:1px; }
+.add-chev  { font-size:12px; color:var(--tx4); transition:transform .2s; }
+.add-toggle[aria-expanded="true"] .add-chev { transform:rotate(90deg); }
 .add-panel {
   display:none; background:var(--surface); border:1px solid var(--border);
-  border-top:none; border-radius:0 0 var(--r) var(--r); overflow:hidden;
+  border-top:none; border-radius:0 0 var(--r2) var(--r2);
+  overflow:hidden; box-shadow:var(--shadow-sm);
 }
 .add-panel.open { display:block; }
-.add-tabs { display:flex; border-bottom:1px solid var(--border); overflow-x:auto; }
+.add-tabs { display:flex; border-bottom:2px solid var(--border); background:var(--bg2); overflow-x:auto; }
 .add-tab {
-  padding:11px 18px; font-family:var(--mono); font-size:12px; color:var(--dim);
-  cursor:pointer; border:none; background:none; border-bottom:2px solid transparent;
-  white-space:nowrap; transition:all .15s; letter-spacing:.04em;
+  padding:12px 20px; font-size:13px; font-weight:500; color:var(--tx3);
+  cursor:pointer; border:none; background:none; white-space:nowrap;
+  border-bottom:2px solid transparent; margin-bottom:-2px;
+  transition:all .15s; display:flex; align-items:center; gap:6px;
 }
-.add-tab:hover { color:var(--text); }
-.add-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-.add-tab:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
-.add-tab-content { display:none; padding:24px; }
-.add-tab-content.active { display:block; }
-.add-section-title { font-size:15px; font-weight:600; color:var(--bright); margin-bottom:6px; }
-.add-section-sub   { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.7; }
-.add-section-sub code {
-  font-family:var(--mono); font-size:12px;
-  background:rgba(59,130,246,.1); padding:2px 6px; border-radius:4px; color:var(--accent);
-}
+.add-tab:hover { color:var(--tx1); background:var(--bg3); }
+.add-tab.active { color:var(--brand); border-bottom-color:var(--brand); background:var(--surface); font-weight:600; }
+.add-tab:focus-visible { outline:2px solid var(--brand); outline-offset:-2px; }
+.tab-pane { display:none; padding:28px; }
+.tab-pane.active { display:block; }
+.tab-title { font-size:16px; font-weight:700; color:var(--tx1); margin-bottom:6px; }
+.tab-sub   { font-size:13px; color:var(--tx3); margin-bottom:20px; line-height:1.7; }
+.tab-sub code { font-family:var(--mono); font-size:12px; background:var(--bg2); border:1px solid var(--border); padding:1px 6px; border-radius:4px; color:var(--tx2); }
+
 /* Drop zone */
-.drop-zone {
-  border:2px dashed var(--border2); border-radius:var(--r);
-  padding:36px 24px; text-align:center; cursor:pointer;
-  transition:all .2s; background:var(--card); position:relative;
+.drop {
+  border:2px dashed var(--border2); border-radius:var(--r2);
+  padding:40px 24px; text-align:center; cursor:pointer;
+  transition:all .2s; background:var(--bg); position:relative;
 }
-.drop-zone:hover, .drop-zone.dragover { border-color:var(--accent); background:rgba(59,130,246,.04); }
-.drop-zone:focus-within { border-color:var(--accent); }
-.drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-.drop-icon  { font-size:28px; margin-bottom:8px; }
-.drop-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:3px; }
-.drop-sub   { font-size:12px; color:var(--dim); }
-.drop-hint  { font-size:11px; color:var(--dim); margin-top:8px; font-style:italic; }
+.drop:hover, .drop.over { border-color:var(--brand); background:var(--brand-bg); }
+.drop input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.drop-ico   { font-size:28px; margin-bottom:8px; }
+.drop-title { font-size:14px; font-weight:600; color:var(--tx1); margin-bottom:3px; }
+.drop-sub   { font-size:12px; color:var(--tx3); }
+.drop-hint  { font-size:11px; color:var(--tx4); margin-top:7px; font-style:italic; }
+
 /* Form */
 .form-row { margin-bottom:14px; }
-.form-label {
-  display:block; font-family:var(--mono); font-size:11px;
-  text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin-bottom:6px;
-}
+.form-label { display:block; font-size:12px; font-weight:600; color:var(--tx2); margin-bottom:6px; letter-spacing:.01em; }
 .form-input {
-  width:100%; padding:9px 12px; border-radius:var(--rs);
-  background:var(--card); border:1px solid var(--border);
-  color:var(--bright); font-size:13px; font-family:var(--sans);
-  transition:border-color .15s;
+  width:100%; padding:9px 12px; border-radius:var(--r3);
+  background:var(--surface); border:1.5px solid var(--border);
+  color:var(--tx1); font-size:13px; font-family:var(--font);
+  transition:border-color .15s, box-shadow .15s;
   outline:2px solid transparent; outline-offset:2px;
 }
-.form-input:focus { border-color:var(--accent); outline-color:rgba(59,130,246,.35); }
-.form-check { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--text); cursor:pointer; line-height:1.5; }
-.form-check input { accent-color:var(--accent); width:15px; height:15px; cursor:pointer; margin-top:2px; flex-shrink:0; }
-/* Destructive warning */
-.form-check.destructive .form-check-label { color:var(--muted); }
-.destructive-warn {
-  display:none; margin-top:6px; margin-left:24px; padding:7px 10px;
-  background:rgba(244,63,94,.07); border:1px solid rgba(244,63,94,.25);
-  border-radius:var(--rx); font-size:12px; color:var(--danger); line-height:1.5;
+.form-input:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(192,86,33,.12); }
+.form-check { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--tx2); cursor:pointer; line-height:1.5; }
+.form-check input { accent-color:var(--brand); width:15px; height:15px; cursor:pointer; margin-top:2px; flex-shrink:0; }
+.destroy-warn {
+  display:none; margin-top:7px; margin-left:24px; padding:8px 12px;
+  background:var(--red-bg); border:1px solid var(--red-border);
+  border-radius:var(--r4); font-size:12px; color:var(--red); line-height:1.55;
 }
-.destructive-warn.show { display:block; }
-/* Upload btn */
-.upload-btn {
-  display:inline-flex; align-items:center; gap:8px;
-  padding:9px 18px; border-radius:var(--rs); margin-top:16px;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  border:none; color:#fff; font-size:13px; font-weight:600;
-  cursor:pointer; transition:transform .15s,box-shadow .15s;
-  box-shadow:0 2px 10px rgba(59,130,246,.3);
+.destroy-warn.show { display:block; }
+
+.up-btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:10px 20px; border-radius:var(--r3); margin-top:14px;
+  background:var(--brand); border:none; color:#fff;
+  font-family:var(--font); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .18s var(--ease);
+  box-shadow:0 1px 3px rgba(192,86,33,.35);
 }
-.upload-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(59,130,246,.45); }
-.upload-btn:focus-visible { outline:3px solid var(--accent2); outline-offset:3px; }
-.upload-btn:disabled { opacity:.42; cursor:not-allowed; transform:none; }
-.upload-hint { font-size:11px; color:var(--dim); margin-top:8px; font-style:italic; }
-.download-link {
-  display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px;
-  color:var(--accent); text-decoration:none; margin-top:10px;
-  padding:5px 11px; border:1px solid rgba(59,130,246,.3); border-radius:var(--rx); transition:all .15s;
+.up-btn:hover:not(:disabled) { background:var(--brand-hover); transform:translateY(-1px); box-shadow:0 3px 12px rgba(192,86,33,.4); }
+.up-btn:focus-visible { outline:3px solid var(--brand-light); outline-offset:3px; }
+.up-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+.up-hint { font-size:11px; color:var(--tx4); margin-top:7px; font-style:italic; }
+.dl-link {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--mono); font-size:12px; font-weight:500; color:var(--brand);
+  text-decoration:none; margin-top:12px;
+  padding:5px 11px; border:1px solid var(--orange-border);
+  border-radius:var(--r4); background:var(--brand-bg); transition:all .15s;
 }
-.download-link:hover { background:rgba(59,130,246,.1); }
-.download-link:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-/* Ingest result */
-.ingest-result { margin-top:14px; padding:12px 15px; border-radius:var(--rs); font-size:13px; display:none; }
-.ingest-result.success { background:rgba(34,197,94,.07); border:1px solid rgba(34,197,94,.3); color:var(--safe); display:block; }
-.ingest-result.error   { background:rgba(244,63,94,.07); border:1px solid rgba(244,63,94,.3); color:var(--danger); display:block; }
-/* CLI steps */
-.steps { list-style:none; counter-reset:steps; }
+.dl-link:hover { background:var(--orange-bg); border-color:var(--brand); }
+.dl-link:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+.ingest-res { margin-top:12px; padding:11px 14px; border-radius:var(--r3); font-size:13px; display:none; }
+.ingest-res.ok  { background:var(--green-bg); border:1px solid var(--green-border); color:var(--green); display:block; }
+.ingest-res.err { background:var(--red-bg);   border:1px solid var(--red-border);   color:var(--red);   display:block; }
+
+/* Steps */
+.steps { list-style:none; counter-reset:s; }
 .steps li {
-  counter-increment:steps; padding:12px 0 12px 42px; position:relative;
-  border-bottom:1px solid var(--border); font-size:13px; color:var(--text); line-height:1.7;
+  counter-increment:s; padding:12px 0 12px 44px; position:relative;
+  border-bottom:1px solid var(--border); font-size:13px; color:var(--tx2); line-height:1.7;
 }
 .steps li:last-child { border-bottom:none; }
 .steps li::before {
-  content:counter(steps); position:absolute; left:0; top:11px;
-  width:25px; height:25px; border-radius:50%;
-  background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.28);
-  color:var(--accent); font-family:var(--mono); font-size:11px; font-weight:700;
+  content:counter(s); position:absolute; left:0; top:10px;
+  width:26px; height:26px; border-radius:50%;
+  background:var(--brand-bg); border:1.5px solid var(--orange-border);
+  color:var(--brand); font-family:var(--mono); font-size:11px; font-weight:700;
   display:flex; align-items:center; justify-content:center;
 }
+.code-wrap { position:relative; margin:8px 0; }
 .code-block {
-  display:block; font-family:var(--mono); font-size:11px; color:var(--muted);
-  background:var(--bg); border:1px solid var(--border); border-radius:var(--rx);
-  padding:9px 36px 9px 12px; margin:7px 0;
-  overflow-x:auto; white-space:pre; position:relative;
+  display:block; font-family:var(--mono); font-size:11px; font-weight:400; color:var(--tx3);
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--r4);
+  padding:10px 40px 10px 14px; overflow-x:auto; white-space:pre; line-height:1.7;
 }
-/* inline copy for code blocks in CLI tab */
-.code-wrap { position:relative; margin:7px 0; }
-.code-wrap .code-block { margin:0; }
-.code-wrap .copy-btn { position:absolute; top:6px; right:6px; }
-.adapter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:9px; margin-bottom:14px; }
-.adapter-card { background:var(--card); border:1px solid var(--border); border-radius:var(--rs); padding:13px 15px; }
-.adapter-title { font-size:13px; font-weight:600; color:var(--bright); margin-bottom:3px; }
-.adapter-sub   { font-size:11px; color:var(--dim); }
+@media(max-width:640px) { .code-block { white-space:pre-wrap; word-break:break-all; } }
+.code-wrap .copy-btn { top:7px; right:7px; }
+.adapt-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:16px; }
+@media(max-width:480px) { .adapt-grid { grid-template-columns:1fr; } }
+.adapt-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r3); padding:14px 15px; }
+.adapt-title { font-size:13px; font-weight:600; color:var(--tx1); margin-bottom:3px; }
+.adapt-sub   { font-size:11px; color:var(--tx4); }
 
-/* ── Toast ─────────────────────────────────────────────────────────────── */
-.toast-container { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:7px; z-index:1000; }
+/* ── Toasts ──────────────────────────────────────────────────────────────── */
+.toasts { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:7px; z-index:1000; }
 .toast {
-  display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:10px;
-  background:var(--card2); border:1px solid var(--border);
-  box-shadow:var(--shadow); font-size:13px; color:var(--text);
-  min-width:240px; max-width:340px; animation:toastIn .2s ease both;
+  display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:var(--r2);
+  background:var(--surface); border:1px solid var(--border);
+  box-shadow:var(--shadow-lg); font-size:13px; color:var(--tx2);
+  min-width:240px; max-width:340px; animation:toastIn .2s var(--ease) both;
 }
-.toast.success { border-color:rgba(34,197,94,.35); }
-.toast.error   { border-color:rgba(244,63,94,.35); }
-.toast.info    { border-color:rgba(59,130,246,.35); }
+.toast.success { border-color:var(--green-border); background:var(--green-bg); }
+.toast.error   { border-color:var(--red-border);   background:var(--red-bg);   }
+.toast.info    { border-color:var(--blue-border);   background:var(--blue-bg);  }
 .toast-icon  { font-size:15px; flex-shrink:0; margin-top:1px; }
-.toast-body  { flex:1; }
-.toast-msg   { line-height:1.5; }
-.toast-undo  {
-  display:inline-block; margin-top:4px; font-size:12px; font-weight:600;
-  color:var(--accent); cursor:pointer; text-decoration:underline; background:none; border:none; padding:0;
-}
-.toast-undo:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
-.toast-close {
-  background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px;
-  line-height:1; padding:1px; flex-shrink:0; margin-top:1px; border-radius:3px;
-  transition:color .15s;
-}
-.toast-close:hover { color:var(--bright); }
+.toast-body  { flex:1; line-height:1.5; }
+.toast-undo  { display:inline-block; margin-top:4px; font-size:12px; font-weight:600; color:var(--brand); cursor:pointer; background:none; border:none; padding:0; text-decoration:underline; }
+.toast-undo:focus-visible { outline:2px solid var(--brand); outline-offset:2px; border-radius:2px; }
+.toast-close { background:none; border:none; color:var(--tx4); cursor:pointer; font-size:14px; line-height:1; padding:1px; border-radius:3px; flex-shrink:0; margin-top:1px; transition:color .15s; }
+.toast-close:hover { color:var(--tx1); }
 @keyframes toastIn  { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
 @keyframes toastOut { to{opacity:0;transform:translateX(16px)} }
+@media(max-width:640px) { .toasts { right:12px; bottom:12px; left:12px; } .toast { min-width:0; max-width:100%; } }
 
-/* ── Footer ────────────────────────────────────────────────────────────── */
+/* ── Footer ──────────────────────────────────────────────────────────────── */
 footer {
-  margin-top:48px; padding-top:18px; border-top:1px solid var(--border);
-  font-family:var(--mono); font-size:11px; color:var(--dim); text-align:center; letter-spacing:.05em;
-}
-
-/* ── Responsive (mobile) ───────────────────────────────────────────────── */
-@media(max-width:640px) {
-  .topbar       { flex-direction:column; align-items:stretch; }
-  .topbar-right { justify-content:space-between; }
-  .hero         { flex-direction:column; }
-  .card-head    { flex-direction:column; }
-  .card-right   { flex-direction:row; align-items:center; width:100%; justify-content:space-between; }
-  .gauge        { display:flex; align-items:center; gap:12px; min-width:0; }
-  .gauge-bar    { width:60px; }
-  .def-sql      { word-break:break-all; }
-  .code-block   { white-space:pre-wrap; word-break:break-all; }
-  .adapter-grid { grid-template-columns:1fr; }
-  .add-tabs     { gap:0; }
-  .add-tab      { padding:10px 12px; font-size:11px; }
-  .toast-container { right:12px; bottom:12px; left:12px; }
-  .toast        { min-width:0; max-width:100%; }
-}
-@media(max-width:480px) {
-  .kpi-n { font-size:20px; }
-  .controls-row { gap:6px; }
+  margin-top:56px; padding-top:20px; border-top:1px solid var(--border);
+  font-family:var(--mono); font-size:11px; color:var(--tx4); text-align:center; letter-spacing:.05em;
 }
 </style>
 </head>
 <body>
 
-<a href="#conflicts" class="skip-link">Skip to conflicts</a>
-<div class="toast-container" id="toasts" role="region" aria-live="polite" aria-label="Notifications"></div>
+<a href="#conflicts" class="skip">Skip to conflicts</a>
+<div class="toasts" id="toasts" role="region" aria-live="polite" aria-label="Notifications"></div>
 
 <!-- About modal -->
-<div class="modal-backdrop" id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
-  <div class="modal">
+<div class="modal-bg" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-box">
     <button class="modal-close" onclick="closeModal()" aria-label="Close about dialog">×</button>
-    <h2 id="about-title">About MetricGuard</h2>
-    <p>MetricGuard scans your team's metric definitions, matches them by <strong>meaning</strong> using embeddings, and flags where the same business concept is computed differently across teams.</p>
-    <p>This is the silent reason dashboards disagree and executives stop trusting the numbers. A 10-person data team spending ~35% of time reconciling metrics costs ~$525K/year.</p>
-    <p><strong>How it works:</strong> text → 384-dim vectors (all-MiniLM-L6-v2) → cosine similarity → union-find grouping → SQL AST conflict detection → RAG-grounded LLM recommendations.</p>
-    <p><strong>Add your team's metrics:</strong> use the ingestion panel at the bottom of the page — CSV upload, dbt manifest, database connector, or the CLI wizard.</p>
+    <h2 id="modal-title">About MetricGuard</h2>
+    <p>MetricGuard scans your team's metric definitions, matches them by <strong>meaning</strong> using sentence embeddings, and flags where the same business concept is computed differently across teams.</p>
+    <p>This is the silent reason dashboards disagree. A 10-person data team spending ~35% of time reconciling metrics costs approximately <strong>$525K/year</strong>.</p>
+    <p><strong>Stack:</strong> all-MiniLM-L6-v2 embeddings → cosine similarity → union-find grouping → sqlglot SQL AST parsing → RAG-grounded Claude recommendations.</p>
+    <p><strong>Add your own metrics:</strong> use the ingestion panel at the bottom of this page — CSV, dbt manifest, database connector, or the CLI wizard.</p>
   </div>
 </div>
 
 <div class="wrap">
 
-  <!-- Top bar -->
-  <header class="topbar">
-    <a href="/" class="logo" aria-label="MetricGuard home">
-      <div class="logo-icon" aria-hidden="true">M</div>
-      <div class="logo-text">Metric<em>Guard</em></div>
+  <!-- Navbar -->
+  <nav class="nav" aria-label="Main navigation">
+    <a href="/" class="nav-logo" aria-label="MetricGuard home">
+      <div class="nav-mark" aria-hidden="true">MG</div>
+      <div class="nav-name">Metric<em>Guard</em></div>
     </a>
-    <div class="topbar-right">
-      <div class="refresh-badge" role="status" aria-live="polite" aria-atomic="true">
-        <div class="pulse" id="pulse-dot" aria-hidden="true"></div>
-        <span id="refresh-label">refresh in <span id="countdown">30</span>s</span>
+    <div class="nav-right">
+      <div class="status-pill" role="status" aria-live="polite" aria-atomic="true">
+        <div class="dot" id="dot" aria-hidden="true"></div>
+        <span id="refresh-label">refresh in <span id="cd">30</span>s</span>
       </div>
-      <button class="run-btn" id="run-btn" onclick="triggerRun()" aria-label="Re-run the MetricGuard analysis pipeline">
+      <button class="btn-ghost" onclick="openModal()" aria-haspopup="dialog">About</button>
+      <button class="btn-primary" id="run-btn" onclick="triggerRun()" aria-label="Re-run the MetricGuard analysis pipeline">
         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <path d="M3 2.5a.5.5 0 0 1 .753-.431l10 5.5a.5.5 0 0 1 0 .862l-10 5.5A.5.5 0 0 1 3 13.5v-11z"/>
         </svg>
         Re-run pipeline
       </button>
     </div>
-  </header>
+  </nav>
 
-  <!-- Hero (compact) -->
+  <!-- Hero -->
   <div class="hero">
-    <div class="hero-left">
-      <div class="hero-eyebrow" aria-hidden="true">Metric Trust Audit · Semantic Consistency Report</div>
+    <div>
+      <div class="hero-eyebrow" aria-hidden="true">Metric Trust Audit</div>
       <h1>Metric<em>Guard</em></h1>
-      <button class="hero-about" onclick="openModal()" aria-haspopup="dialog">
-        What is this? ↗
-      </button>
+      <div class="hero-meta">
+        <span class="hero-sub">Semantic consistency audit for your team's KPIs</span>
+        <span class="hero-badge warm" id="hero-badge"></span>
+        <button class="about-btn" onclick="openModal()" aria-haspopup="dialog">How it works ↗</button>
+      </div>
     </div>
   </div>
 
-  <!-- KPI tiles — first visible content -->
+  <!-- KPIs -->
   <section aria-label="Key performance indicators">
     <div class="kpi-grid" id="kpis"></div>
   </section>
 
-  <!-- Onboarding — shown only when running demo data -->
-  <div class="onboarding hidden" id="onboarding" role="complementary" aria-label="Getting started guide">
-    <div class="onboarding-icon" aria-hidden="true">👋</div>
-    <div class="onboarding-body">
-      <div class="onboarding-title">You're viewing demo data</div>
-      <div class="onboarding-text">
-        These conflicts are from a synthetic dataset — 12 made-up metrics across 6 teams.<br>
-        To scan <strong>your real metrics</strong>, use the <strong>Add your team's metrics</strong>
-        panel at the bottom of this page, or run <code>python src/cli.py</code> in your terminal.
+  <!-- Onboarding banner -->
+  <div class="onboarding hidden" id="ob" role="note" aria-label="Getting started">
+    <div class="ob-icon" aria-hidden="true">👋</div>
+    <div class="ob-body">
+      <div class="ob-title">You're viewing demo data</div>
+      <div class="ob-text">
+        These conflicts come from a 12-metric synthetic dataset. To scan <strong>your real metrics</strong>,
+        use the <strong>Add your team's metrics</strong> panel below, or run
+        <code>python src/cli.py</code> in your terminal.
       </div>
     </div>
-    <button class="onboarding-close" onclick="dismissOnboarding()" aria-label="Dismiss demo data notice">×</button>
+    <button class="ob-close" onclick="dismissOb()" aria-label="Dismiss demo data notice">×</button>
   </div>
 
   <!-- Controls -->
-  <div class="controls-row" id="controls" style="display:none" role="toolbar" aria-label="Filter and sort conflicts">
-    <span class="ctrl-label" id="filter-label">Team</span>
-    <div class="chips" role="group" aria-labelledby="filter-label" id="team-filters"></div>
+  <div class="controls" id="controls" style="display:none" role="toolbar" aria-label="Filter and sort">
+    <span class="ctrl-label" id="fl">Team</span>
+    <div class="chips" role="group" aria-labelledby="fl" id="chips"></div>
     <div class="ctrl-sep" aria-hidden="true"></div>
-    <span class="ctrl-label" id="sort-label">Sort</span>
-    <button class="sort-btn active" id="sort-risk" onclick="setSort('risk')" aria-pressed="true" aria-label="Sort by trust risk score">Risk ↓</button>
-    <button class="sort-btn" id="sort-sim"  onclick="setSort('sim')"  aria-pressed="false" aria-label="Sort by similarity score">Similarity ↓</button>
+    <span class="ctrl-label" id="sl">Sort</span>
+    <button class="sort-btn active" id="s-risk" onclick="setSort('risk')" aria-pressed="true" aria-label="Sort by risk score">Risk ↓</button>
+    <button class="sort-btn"        id="s-sim"  onclick="setSort('sim')"  aria-pressed="false" aria-label="Sort by similarity">Similarity ↓</button>
     <div class="spacer"></div>
-    <span class="count-badge" id="count-badge" aria-live="polite"></span>
+    <span class="count-tag" id="ctag" aria-live="polite"></span>
   </div>
 
-  <!-- Section title -->
-  <div class="sec-title" id="sec-title" style="display:none" aria-hidden="true">
-    Detected conflicts · ranked by trust risk
+  <!-- Section divider -->
+  <div class="divider" id="sec-divider" style="display:none" aria-hidden="true">
+    <span class="divider-label">Detected conflicts</span>
+    <div class="divider-line"></div>
   </div>
 
-  <!-- Conflict list -->
+  <!-- Conflicts -->
   <main id="conflicts" tabindex="-1" aria-label="Detected metric conflicts"></main>
 
-  <!-- Add Metrics (below the fold — setup task, not primary view) -->
+  <!-- Add Metrics (below fold) -->
   <section class="add-section" aria-label="Add your team's metrics">
-    <div class="add-header" id="add-toggle" role="button" tabindex="0"
+    <div class="add-toggle" id="add-hdr" role="button" tabindex="0"
          aria-expanded="false" aria-controls="add-panel"
-         onclick="toggleAddPanel()"
-         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAddPanel()}">
-      <div class="add-header-icon" aria-hidden="true">➕</div>
-      <div class="add-header-text">
-        <div class="add-header-title">Add your team's metrics</div>
-        <div class="add-header-sub">CSV upload · dbt manifest · database · CLI wizard</div>
+         onclick="toggleAdd()"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAdd()}">
+      <div class="add-ico" aria-hidden="true">➕</div>
+      <div class="add-text">
+        <div class="add-title">Add your team's metrics</div>
+        <div class="add-sub">CSV upload · dbt manifest · database · CLI wizard</div>
       </div>
-      <span class="add-chevron" aria-hidden="true">▶</span>
+      <span class="add-chev" aria-hidden="true">▶</span>
     </div>
-    <div class="add-panel" id="add-panel" role="region" aria-labelledby="add-toggle">
-      <div class="add-tabs" role="tablist" aria-label="Ingestion method">
-        <button class="add-tab active" role="tab" aria-selected="true"  aria-controls="tab-csv" onclick="switchTab('csv')">📄 CSV Upload</button>
-        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tab-dbt" onclick="switchTab('dbt')">⚙️ dbt Manifest</button>
-        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tab-cli" onclick="switchTab('cli')">💻 CLI Wizard</button>
-        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tab-db"  onclick="switchTab('db')">🗄️ Database</button>
+    <div class="add-panel" id="add-panel" role="region" aria-labelledby="add-hdr">
+      <div class="add-tabs" role="tablist" aria-label="Ingestion methods">
+        <button class="add-tab active" role="tab" aria-selected="true"  aria-controls="tp-csv" onclick="switchTab('csv')">📄 CSV Upload</button>
+        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tp-dbt" onclick="switchTab('dbt')">⚙️ dbt Manifest</button>
+        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tp-cli" onclick="switchTab('cli')">💻 CLI Wizard</button>
+        <button class="add-tab"        role="tab" aria-selected="false" aria-controls="tp-db"  onclick="switchTab('db')">🗄️ Database</button>
       </div>
 
-      <!-- CSV tab -->
-      <div class="add-tab-content active" id="tab-csv" role="tabpanel" aria-label="CSV upload">
-        <div class="add-section-title">Upload a CSV of your metric definitions</div>
-        <div class="add-section-sub">
-          Fill in the template with your team's SQL metrics and upload it here.
-          MetricGuard will merge them with any existing metrics — no duplicates.<br><br>
-          <strong>Required columns:</strong> <code>team</code> <code>metric_name</code> <code>sql</code> <code>description</code><br>
+      <!-- CSV -->
+      <div class="tab-pane active" id="tp-csv" role="tabpanel">
+        <div class="tab-title">Upload a CSV of your metric definitions</div>
+        <div class="tab-sub">
+          Fill in the template and upload. MetricGuard merges new metrics with existing ones — no duplicates.<br>
+          <strong>Required:</strong> <code>team</code> <code>metric_name</code> <code>sql</code> <code>description</code> &nbsp;·&nbsp;
           <strong>Optional:</strong> <code>filters</code> <code>includes_refunds</code> <code>time_grain</code>
         </div>
-        <a class="download-link" href="/ingest/template" download="metricguard_template.csv" aria-label="Download CSV template file">
-          ⬇ Download CSV template
-        </a>
+        <a class="dl-link" href="/ingest/template" download="metricguard_template.csv" aria-label="Download CSV template">⬇ Download template</a>
         <br><br>
-        <div class="drop-zone" id="csv-drop"
-             ondragover="event.preventDefault();this.classList.add('dragover')"
-             ondragleave="this.classList.remove('dragover')"
-             ondrop="handleCsvDrop(event)"
-             role="button" aria-label="Drop zone — drag and drop your CSV file here or click to browse">
-          <input type="file" accept=".csv" id="csv-file-input" onchange="handleCsvSelect(event)" aria-label="Select CSV file">
-          <div class="drop-icon" aria-hidden="true">📂</div>
-          <div class="drop-title" id="csv-drop-title">Drag & drop your CSV here</div>
-          <div class="drop-sub">or click to browse files · .csv only</div>
+        <div class="drop" id="csv-drop"
+             ondragover="event.preventDefault();this.classList.add('over')"
+             ondragleave="this.classList.remove('over')"
+             ondrop="csvDrop(event)"
+             role="button" aria-label="Drop zone — drag your CSV here or click to browse">
+          <input type="file" accept=".csv" id="csv-file" onchange="csvPick(event)" aria-label="Select CSV file">
+          <div class="drop-ico" aria-hidden="true">📂</div>
+          <div class="drop-title" id="csv-title">Drag & drop your CSV here</div>
+          <div class="drop-sub">or click to browse  ·  .csv only</div>
         </div>
         <div class="form-row" style="margin-top:16px">
           <label class="form-label" for="csv-team">Default team name (if not in CSV)</label>
-          <input class="form-input" id="csv-team" placeholder="e.g. Finance" style="max-width:300px" autocomplete="organization">
+          <input class="form-input" id="csv-team" placeholder="e.g. Finance" style="max-width:280px" autocomplete="organization">
         </div>
-        <div class="form-check destructive">
-          <input type="checkbox" id="csv-replace" onchange="toggleDestructiveWarn('csv-warn',this.checked)" aria-describedby="csv-warn">
-          <span class="form-check-label">Replace all existing metrics</span>
+        <div class="form-check">
+          <input type="checkbox" id="csv-rep" onchange="showDestroy('csv-warn',this.checked)" aria-describedby="csv-warn">
+          <span>Replace all existing metrics</span>
         </div>
-        <div class="destructive-warn" id="csv-warn" role="alert">
-          ⚠ This will permanently delete all existing metric definitions and replace them with the contents of this CSV. This cannot be undone.
-        </div>
-        <button class="upload-btn" id="csv-upload-btn" onclick="uploadCsv()" disabled aria-label="Upload CSV and ingest metrics">
-          ⬆ Upload &amp; Ingest
-        </button>
-        <p class="upload-hint" id="csv-upload-hint">Select a file above to enable upload.</p>
-        <div class="ingest-result" id="csv-result" role="status"></div>
+        <div class="destroy-warn" id="csv-warn" role="alert">⚠ This will permanently delete all existing metric definitions. This cannot be undone.</div>
+        <button class="up-btn" id="csv-btn" onclick="uploadCsv()" disabled aria-label="Upload CSV and ingest">⬆ Upload & Ingest</button>
+        <p class="up-hint" id="csv-hint">Select a file above to enable upload.</p>
+        <div class="ingest-res" id="csv-res" role="status"></div>
       </div>
 
-      <!-- dbt tab -->
-      <div class="add-tab-content" id="tab-dbt" role="tabpanel" aria-label="dbt manifest import" hidden>
-        <div class="add-section-title">Import from a dbt project</div>
-        <div class="add-section-sub">
-          Upload your dbt project's <code>target/manifest.json</code>.
-          MetricGuard extracts all nodes tagged <code>metric</code> and dbt Semantic Layer metrics automatically.<br><br>
-          Generate it by running <code>dbt compile</code> in your dbt project root.
+      <!-- dbt -->
+      <div class="tab-pane" id="tp-dbt" role="tabpanel" hidden>
+        <div class="tab-title">Import from a dbt project</div>
+        <div class="tab-sub">
+          Upload <code>target/manifest.json</code>. MetricGuard extracts all nodes tagged <code>metric</code>
+          and dbt Semantic Layer metrics automatically.<br>
+          Generate it with <code>dbt compile</code> in your dbt project root.
         </div>
-        <div class="drop-zone" id="dbt-drop"
-             ondragover="event.preventDefault();this.classList.add('dragover')"
-             ondragleave="this.classList.remove('dragover')"
-             ondrop="handleDbtDrop(event)"
-             role="button" aria-label="Drop zone — drag and drop manifest.json here or click to browse">
-          <input type="file" accept=".json" id="dbt-file-input" onchange="handleDbtSelect(event)" aria-label="Select manifest.json file">
-          <div class="drop-icon" aria-hidden="true">📦</div>
-          <div class="drop-title" id="dbt-drop-title">Drag & drop manifest.json here</div>
-          <div class="drop-sub">or click to browse · must be target/manifest.json</div>
+        <div class="drop" id="dbt-drop"
+             ondragover="event.preventDefault();this.classList.add('over')"
+             ondragleave="this.classList.remove('over')"
+             ondrop="dbtDrop(event)"
+             role="button" aria-label="Drop zone — drag manifest.json here or click to browse">
+          <input type="file" accept=".json" id="dbt-file" onchange="dbtPick(event)" aria-label="Select manifest.json">
+          <div class="drop-ico" aria-hidden="true">📦</div>
+          <div class="drop-title" id="dbt-title">Drag & drop manifest.json here</div>
+          <div class="drop-sub">or click to browse  ·  target/manifest.json</div>
         </div>
         <div class="form-row" style="margin-top:16px">
           <label class="form-label" for="dbt-team">Team name override</label>
-          <input class="form-input" id="dbt-team" placeholder="defaults to dbt project name" style="max-width:300px">
+          <input class="form-input" id="dbt-team" placeholder="defaults to dbt project name" style="max-width:280px">
         </div>
-        <div class="form-check destructive">
-          <input type="checkbox" id="dbt-replace" onchange="toggleDestructiveWarn('dbt-warn',this.checked)" aria-describedby="dbt-warn">
-          <span class="form-check-label">Replace all existing metrics</span>
+        <div class="form-check">
+          <input type="checkbox" id="dbt-rep" onchange="showDestroy('dbt-warn',this.checked)" aria-describedby="dbt-warn">
+          <span>Replace all existing metrics</span>
         </div>
-        <div class="destructive-warn" id="dbt-warn" role="alert">
-          ⚠ This will permanently delete all existing metric definitions. This cannot be undone.
-        </div>
-        <button class="upload-btn" id="dbt-upload-btn" onclick="uploadDbt()" disabled aria-label="Import metrics from dbt manifest">
-          ⬆ Import from dbt
-        </button>
-        <p class="upload-hint" id="dbt-upload-hint">Select a file above to enable upload.</p>
-        <div class="ingest-result" id="dbt-result" role="status"></div>
+        <div class="destroy-warn" id="dbt-warn" role="alert">⚠ This will permanently delete all existing metric definitions. This cannot be undone.</div>
+        <button class="up-btn" id="dbt-btn" onclick="uploadDbt()" disabled aria-label="Import from dbt manifest">⬆ Import from dbt</button>
+        <p class="up-hint" id="dbt-hint">Select a file above to enable upload.</p>
+        <div class="ingest-res" id="dbt-res" role="status"></div>
       </div>
 
-      <!-- CLI tab -->
-      <div class="add-tab-content" id="tab-cli" role="tabpanel" aria-label="CLI wizard instructions" hidden>
-        <div class="add-section-title">Guided CLI wizard — no coding required</div>
-        <div class="add-section-sub">
-          Run the interactive wizard in your terminal. It asks you questions and builds
-          <code>data/metric_definitions.json</code> step by step.
-        </div>
+      <!-- CLI -->
+      <div class="tab-pane" id="tp-cli" role="tabpanel" hidden>
+        <div class="tab-title">Guided CLI wizard — no coding required</div>
+        <div class="tab-sub">Run the interactive wizard in your terminal. It asks you questions and builds <code>data/metric_definitions.json</code>.</div>
         <ol class="steps">
-          <li>Open a terminal in your MetricGuard project folder
-            <div class="code-wrap"><code class="code-block">cd /path/to/MetricGuard</code><button class="copy-btn" onclick="copyCode(this,'cd /path/to/MetricGuard')" aria-label="Copy command">Copy</button></div>
-          </li>
+          <li>Open a terminal in your MetricGuard folder
+            <div class="code-wrap"><code class="code-block">cd /path/to/MetricGuard</code><button class="copy-btn" onclick="cp(this,'cd /path/to/MetricGuard')" aria-label="Copy">Copy</button></div></li>
           <li>Run the wizard
-            <div class="code-wrap"><code class="code-block">python src/cli.py</code><button class="copy-btn" onclick="copyCode(this,'python src/cli.py')" aria-label="Copy command">Copy</button></div>
-          </li>
-          <li>Answer the prompts — team name, metric names, SQL, descriptions
+            <div class="code-wrap"><code class="code-block">python src/cli.py</code><button class="copy-btn" onclick="cp(this,'python src/cli.py')" aria-label="Copy">Copy</button></div></li>
+          <li>Answer prompts — team name, metric names, SQL, descriptions
             <div class="code-wrap"><code class="code-block">→ Your team name: Finance
 → Metric name: monthly_revenue
 → SQL: SELECT SUM(amount) FROM orders WHERE status='completed'
 → Description: Revenue from completed orders only
 → Time grain [month]: month
-✓ Metric saved. Add another? [Y/n]:</code><button class="copy-btn" onclick="copyCode(this,'python src/cli.py')" aria-label="Copy CLI wizard command">Copy</button></div>
-          </li>
-          <li>The wizard offers to run the pipeline immediately — or click <strong>Re-run pipeline</strong> above.</li>
+✓ Saved. Add another? [Y/n]:</code><button class="copy-btn" onclick="cp(this,'python src/cli.py')" aria-label="Copy wizard command">Copy</button></div></li>
+          <li>The wizard offers to run the pipeline — or click <strong>Re-run pipeline</strong> above.</li>
         </ol>
         <div style="margin-top:20px">
-          <div class="add-section-title" style="font-size:13px;margin-bottom:10px">All ingestion methods</div>
-          <div class="adapter-grid">
-            <div class="adapter-card">
-              <div class="adapter-title">📄 CSV</div>
-              <div class="adapter-sub">Spreadsheet from any BI tool</div>
+          <div style="font-size:13px;font-weight:600;color:var(--tx1);margin-bottom:10px">All ingestion methods</div>
+          <div class="adapt-grid">
+            <div class="adapt-card">
+              <div class="adapt-title">📄 CSV</div><div class="adapt-sub">Spreadsheet from any BI tool</div>
               <div class="code-wrap" style="margin-top:8px"><code class="code-block">python src/ingest.py csv \
   --file metrics.csv \
-  --team "Finance"</code><button class="copy-btn" onclick="copyCode(this,'python src/ingest.py csv --file metrics.csv --team Finance')" aria-label="Copy CSV command">Copy</button></div>
+  --team "Finance"</code><button class="copy-btn" onclick="cp(this,'python src/ingest.py csv --file metrics.csv --team Finance')" aria-label="Copy">Copy</button></div>
             </div>
-            <div class="adapter-card">
-              <div class="adapter-title">⚙️ dbt</div>
-              <div class="adapter-sub">dbt Semantic Layer or tagged models</div>
+            <div class="adapt-card">
+              <div class="adapt-title">⚙️ dbt</div><div class="adapt-sub">Semantic Layer or tagged models</div>
               <div class="code-wrap" style="margin-top:8px"><code class="code-block">python src/ingest.py dbt \
-  --manifest target/manifest.json</code><button class="copy-btn" onclick="copyCode(this,'python src/ingest.py dbt --manifest target/manifest.json')" aria-label="Copy dbt command">Copy</button></div>
+  --manifest target/manifest.json</code><button class="copy-btn" onclick="cp(this,'python src/ingest.py dbt --manifest target/manifest.json')" aria-label="Copy">Copy</button></div>
             </div>
-            <div class="adapter-card">
-              <div class="adapter-title">🗄️ Database</div>
-              <div class="adapter-sub">Any SQLAlchemy-compatible DB</div>
+            <div class="adapt-card">
+              <div class="adapt-title">🗄️ Database</div><div class="adapt-sub">Any SQLAlchemy-compatible DB</div>
               <div class="code-wrap" style="margin-top:8px"><code class="code-block">python src/ingest.py db \
   --url "postgresql://..." \
-  --team "Data"</code><button class="copy-btn" onclick="copyCode(this,'python src/ingest.py db --url postgresql://user:pass@host/db --team Data')" aria-label="Copy database command">Copy</button></div>
+  --team "Data"</code><button class="copy-btn" onclick="cp(this,'python src/ingest.py db --url postgresql://user:pass@host/db --team Data')" aria-label="Copy">Copy</button></div>
             </div>
-            <div class="adapter-card">
-              <div class="adapter-title">📋 JSON</div>
-              <div class="adapter-sub">Script or CI pipeline</div>
+            <div class="adapt-card">
+              <div class="adapt-title">📋 JSON</div><div class="adapt-sub">Script or CI pipeline</div>
               <div class="code-wrap" style="margin-top:8px"><code class="code-block">python src/ingest.py json \
-  --file my_metrics.json</code><button class="copy-btn" onclick="copyCode(this,'python src/ingest.py json --file my_metrics.json')" aria-label="Copy JSON command">Copy</button></div>
+  --file my_metrics.json</code><button class="copy-btn" onclick="cp(this,'python src/ingest.py json --file my_metrics.json')" aria-label="Copy">Copy</button></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- DB tab -->
-      <div class="add-tab-content" id="tab-db" role="tabpanel" aria-label="Database connection instructions" hidden>
-        <div class="add-section-title">Connect directly to your data warehouse</div>
-        <div class="add-section-sub">
-          MetricGuard connects to your database, discovers metric views, and pulls their definitions automatically.
-          Supports Postgres, Snowflake, BigQuery, Redshift, MySQL and any SQLAlchemy-compatible database.
-        </div>
+      <!-- DB -->
+      <div class="tab-pane" id="tp-db" role="tabpanel" hidden>
+        <div class="tab-title">Connect directly to your data warehouse</div>
+        <div class="tab-sub">Supports Postgres, Snowflake, BigQuery, Redshift, MySQL and any SQLAlchemy database.</div>
         <ol class="steps">
-          <li>Install the driver for your database
+          <li>Install your database driver
             <div class="code-wrap"><code class="code-block">pip install psycopg2-binary    # PostgreSQL
 pip install snowflake-sqlalchemy   # Snowflake
 pip install sqlalchemy-bigquery    # BigQuery
-pip install pymysql                # MySQL</code><button class="copy-btn" onclick="copyCode(this,'pip install psycopg2-binary')" aria-label="Copy install command">Copy</button></div>
-          </li>
+pip install pymysql                # MySQL</code><button class="copy-btn" onclick="cp(this,'pip install psycopg2-binary')" aria-label="Copy">Copy</button></div></li>
           <li>Run with your connection string
             <div class="code-wrap"><code class="code-block">python src/ingest.py db \
   --url "postgresql://user:pass@host:5432/db" \
   --team "Analytics" \
   --query "SELECT metric_name, sql_definition as sql,
                   description, filters, time_grain
-           FROM   analytics.metric_registry"</code><button class="copy-btn" onclick="copyCode(this,'python src/ingest.py db --url postgresql://user:pass@host/db --team Analytics')" aria-label="Copy database ingestion command">Copy</button></div>
-          </li>
-          <li>Without <code>--query</code>, auto-discovers views with <code>metric</code>, <code>kpi</code>, or <code>measure</code> in the name.</li>
+           FROM   analytics.metric_registry"</code><button class="copy-btn" onclick="cp(this,'python src/ingest.py db --url postgresql://... --team Analytics')" aria-label="Copy">Copy</button></div></li>
+          <li>Without <code>--query</code>, MetricGuard auto-discovers views with <code>metric</code>, <code>kpi</code>, or <code>measure</code> in their name.</li>
           <li>Run the analysis
-            <div class="code-wrap"><code class="code-block">python src/report.py</code><button class="copy-btn" onclick="copyCode(this,'python src/report.py')" aria-label="Copy run command">Copy</button></div>
-          </li>
+            <div class="code-wrap"><code class="code-block">python src/report.py</code><button class="copy-btn" onclick="cp(this,'python src/report.py')" aria-label="Copy">Copy</button></div></li>
         </ol>
       </div>
     </div>
   </section>
 
   <footer>
-    MetricGuard &nbsp;·&nbsp; embeddings + vector similarity + RAG-grounded LLM
-    &nbsp;·&nbsp; reconciles definitions against a <strong>governed glossary</strong>
+    MetricGuard &nbsp;·&nbsp; embeddings + vector similarity + RAG-grounded LLM &nbsp;·&nbsp; governed glossary
   </footer>
 </div>
 
 <script>
-/* ── Utilities ──────────────────────────────────────────────────────────── */
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function riskColor(r) { return r>=70?'var(--danger)':r>=40?'var(--warn)':'var(--safe)'; }
-function riskClass(r) { return r>=70?'risk-critical':r>=40?'risk-warning':'risk-low'; }
-function riskLabel(r) { return r>=70?'Critical':r>=40?'Warning':'Low'; }
-function riskIcon(r)  { return r>=70?'▲':r>=40?'●':'▼'; }
+const esc = s => s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const rC = r => r>=70?'var(--red)':r>=40?'var(--orange)':'var(--green)';
+const rCls = r => r>=70?'critical':r>=40?'warning':'low';
+const rLbl = r => r>=70?'Critical':r>=40?'Warning':'Low';
+const rIco = r => r>=70?'▲':r>=40?'●':'▼';
 
-/* ── Modal ──────────────────────────────────────────────────────────────── */
-function openModal()  { document.getElementById('about-modal').classList.add('open'); }
-function closeModal() { document.getElementById('about-modal').classList.remove('open'); }
-document.getElementById('about-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+/* Modal */
+function openModal()  { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 
-/* ── Toast system ───────────────────────────────────────────────────────── */
-function toast(msg, type='info', undoFn=null, duration=3500) {
-  const icons = { success:'✅', error:'❌', info:'ℹ️', warn:'⚠️' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.setAttribute('role','alert');
-  el.innerHTML = `
-    <span class="toast-icon" aria-hidden="true">${icons[type]||'ℹ️'}</span>
-    <div class="toast-body">
-      <div class="toast-msg">${esc(msg)}</div>
-      ${undoFn ? `<button class="toast-undo" aria-label="Undo this action">Undo</button>` : ''}
-    </div>
-    <button class="toast-close" aria-label="Dismiss notification">×</button>`;
-  if (undoFn) el.querySelector('.toast-undo').onclick = () => { undoFn(); el.remove(); };
-  el.querySelector('.toast-close').onclick = () => dismiss(el);
+/* Toast */
+function toast(msg, type='info', undoFn=null, dur=3600) {
+  const icons={success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.setAttribute('role','alert');
+  el.innerHTML=`<span class="toast-icon" aria-hidden="true">${icons[type]||'ℹ️'}</span>
+    <div class="toast-body"><div>${esc(msg)}</div>
+    ${undoFn?'<button class="toast-undo" aria-label="Undo">Undo</button>':''}</div>
+    <button class="toast-close" aria-label="Dismiss">×</button>`;
+  if(undoFn) el.querySelector('.toast-undo').onclick=()=>{undoFn();el.remove();};
+  el.querySelector('.toast-close').onclick=()=>dismiss(el);
   document.getElementById('toasts').appendChild(el);
-  const tid = setTimeout(() => dismiss(el), duration);
-  el._tid = tid;
-  return el;
+  el._t=setTimeout(()=>dismiss(el),dur);
 }
-function dismiss(el) {
-  clearTimeout(el._tid);
-  el.style.animation = 'toastOut .2s ease forwards';
-  setTimeout(() => el.remove(), 210);
+function dismiss(el){clearTimeout(el._t);el.style.animation='toastOut .2s ease forwards';setTimeout(()=>el.remove(),210);}
+
+/* Clipboard */
+async function cp(btn,text){
+  try{await navigator.clipboard.writeText(text);btn.textContent='✓ Copied';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},2000);}
+  catch{btn.textContent='Select & copy';setTimeout(()=>{btn.textContent='Copy';},2500);}
 }
 
-/* ── Clipboard copy ─────────────────────────────────────────────────────── */
-async function copyCode(btn, text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    btn.textContent = '✓ Copied'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-  } catch {
-    btn.textContent = 'Select & copy manually';
-    setTimeout(() => { btn.textContent = 'Copy'; }, 2500);
-  }
-}
+/* Onboarding */
+const DEMO=new Set(['m01','m02','m03','m04','m05','m06','m07','m08','m09','m10','m11','m12']);
+function isDemo(d){try{const ids=new Set((d.conflicts||[]).flatMap(c=>c.metric_ids||[]));return [...ids].every(i=>DEMO.has(i));}catch{return false;}}
+function dismissOb(){document.getElementById('ob').classList.add('hidden');try{localStorage.setItem('mg_ob','1');}catch(e){}}
 
-/* ── Onboarding ─────────────────────────────────────────────────────────── */
-const DEMO_METRIC_IDS = new Set(['m01','m02','m03','m04','m05','m06','m07','m08','m09','m10','m11','m12']);
-function isDemoData(d) {
-  try {
-    const ids = new Set((d.conflicts||[]).flatMap(c => c.metric_ids||[]));
-    return [...ids].every(id => DEMO_METRIC_IDS.has(id));
-  } catch { return false; }
-}
-function dismissOnboarding() {
-  document.getElementById('onboarding').classList.add('hidden');
-  try { localStorage.setItem('mg_onboarding_dismissed','1'); } catch(e) {}
-}
+/* State */
+let data=null,team='ALL',sort='risk',resolved=new Set();
+try{const s=localStorage.getItem('mg_res');if(s)resolved=new Set(JSON.parse(s));}catch(e){}
+function saveRes(){try{localStorage.setItem('mg_res',JSON.stringify([...resolved]));}catch(e){}}
 
-/* ── State ──────────────────────────────────────────────────────────────── */
-let currentData = null;
-let activeTeam  = 'ALL';
-let sortMode    = 'risk';
-let resolvedIds = new Set();
-try { const s=localStorage.getItem('mg_resolved'); if(s) resolvedIds=new Set(JSON.parse(s)); } catch(e) {}
-function saveResolved() { try { localStorage.setItem('mg_resolved',JSON.stringify([...resolvedIds])); } catch(e) {} }
-
-/* ── KPI render ─────────────────────────────────────────────────────────── */
-function renderKPIs(d) {
-  if (!d?.kpis) return;
-  const k = d.kpis;
-  const tiles = [
-    { n:k.total_definitions_scanned,        l:'Definitions',   s:'',  },
-    { n:k.conflicting_definitions_found,     l:'In conflict',   s:'d', },
-    { n:k.pct_definitions_in_conflict+'%',   l:'Conflict rate', s:'d', },
-    { n:k.conflict_groups,                   l:'Groups',        s:'',  },
-    { n:k.teams_affected,                    l:'Teams',         s:'',  },
-    { n:k.highest_trust_risk,                l:'Peak risk',     s:'d', },
+/* KPIs */
+function renderKPIs(d){
+  if(!d?.kpis)return;
+  const k=d.kpis;
+  const tiles=[
+    {n:k.total_definitions_scanned,        l:'Definitions',   acc:'ok'},
+    {n:k.conflicting_definitions_found,     l:'In conflict',   acc:'bad'},
+    {n:k.pct_definitions_in_conflict+'%',  l:'Conflict rate', acc:'bad'},
+    {n:k.conflict_groups,                   l:'Groups',        acc:''},
+    {n:k.teams_affected,                    l:'Teams',         acc:''},
+    {n:k.highest_trust_risk,               l:'Peak risk',     acc:'bad'},
   ];
-  document.getElementById('kpis').innerHTML = tiles.map(t=>`
-    <div class="kpi-card">
-      <div class="kpi-stripe ${t.s}" aria-hidden="true"></div>
-      <div class="kpi-n ${t.s}">${esc(t.n)}</div>
-      <div class="kpi-l">${esc(t.l)}</div>
-    </div>`).join('');
+  document.getElementById('kpis').innerHTML=tiles.map(t=>`
+    <div class="kpi"><div class="kpi-accent ${t.acc}" aria-hidden="true"></div>
+      <div class="kpi-n ${t.acc==='bad'?'bad':''}">${esc(t.n)}</div>
+      <div class="kpi-l">${esc(t.l)}</div></div>`).join('');
+  // hero badge
+  const b=document.getElementById('hero-badge');
+  if(b&&k.conflict_groups) b.textContent=`${k.conflict_groups} conflicts · ${k.teams_affected} teams`;
 }
 
-/* ── Filters ────────────────────────────────────────────────────────────── */
-function renderFilters(d) {
-  const teams = [...new Set((d.conflicts||[]).flatMap(c=>c.teams||[]))].sort();
-  document.getElementById('team-filters').innerHTML =
-    `<button class="chip all-chip active" onclick="setTeam('ALL')" aria-pressed="true">All</button>`+
-    teams.map(t=>`<button class="chip" data-team="${esc(t)}" onclick="setTeam('${esc(t)}')" aria-pressed="false">${esc(t)}</button>`).join('');
+/* Filters */
+function renderFilters(d){
+  const teams=[...new Set((d.conflicts||[]).flatMap(c=>c.teams||[]))].sort();
+  document.getElementById('chips').innerHTML=
+    `<button class="chip all active" onclick="setTeam('ALL')" aria-pressed="true">All teams</button>`+
+    teams.map(t=>`<button class="chip" data-t="${esc(t)}" onclick="setTeam('${esc(t)}')" aria-pressed="false">${esc(t)}</button>`).join('');
 }
-function setTeam(team) {
-  activeTeam = team;
+function setTeam(t){
+  team=t;
   document.querySelectorAll('.chips .chip').forEach(b=>{
-    const active = team==='ALL' ? b.classList.contains('all-chip') : b.dataset.team===team;
-    b.classList.toggle('active', active);
-    b.setAttribute('aria-pressed', String(active));
+    const on=t==='ALL'?b.classList.contains('all'):b.dataset.t===t;
+    b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on));
   });
   renderConflicts();
 }
-function setSort(mode) {
-  sortMode = mode;
-  const rBtn = document.getElementById('sort-risk');
-  const sBtn = document.getElementById('sort-sim');
-  rBtn.classList.toggle('active', mode==='risk'); rBtn.setAttribute('aria-pressed', String(mode==='risk'));
-  sBtn.classList.toggle('active', mode==='sim');  sBtn.setAttribute('aria-pressed', String(mode==='sim'));
+function setSort(m){
+  sort=m;
+  ['risk','sim'].forEach(k=>{const b=document.getElementById('s-'+k);b.classList.toggle('active',k===m);b.setAttribute('aria-pressed',String(k===m));});
   renderConflicts();
 }
 
-/* ── Resolve / Undo ─────────────────────────────────────────────────────── */
-function markResolved(id) {
-  resolvedIds.add(id); saveResolved();
-  const card = document.querySelector(`[data-cid="${CSS.escape(id)}"]`);
-  if (card) card.classList.add('resolved');
-  toast('Conflict marked as resolved.', 'success', () => undoResolved(id));
+/* Resolve / Undo */
+function markRes(id){
+  resolved.add(id);saveRes();
+  const c=document.querySelector(`[data-cid="${CSS.escape(id)}"]`);
+  if(c){c.classList.add('resolved');c.setAttribute('aria-hidden','true');}
+  toast('Conflict marked as resolved.','success',()=>undoRes(id));
 }
-function undoResolved(id) {
-  resolvedIds.delete(id); saveResolved();
-  const card = document.querySelector(`[data-cid="${CSS.escape(id)}"]`);
-  if (card) card.classList.remove('resolved');
-  toast('Conflict restored.', 'info');
+function undoRes(id){
+  resolved.delete(id);saveRes();
+  const c=document.querySelector(`[data-cid="${CSS.escape(id)}"]`);
+  if(c){c.classList.remove('resolved');c.removeAttribute('aria-hidden');}
+  toast('Conflict restored.','info');
 }
 
-/* ── Conflict cards ─────────────────────────────────────────────────────── */
-function renderConflicts() {
-  if (!currentData) return;
-  document.getElementById('controls').style.display  = 'flex';
-  document.getElementById('sec-title').style.display = 'flex';
-  let list = (currentData.conflicts||[]).slice();
-  if (activeTeam !== 'ALL') list = list.filter(c=>(c.teams||[]).includes(activeTeam));
-  list.sort((a,b)=>sortMode==='risk' ? b.trust_risk-a.trust_risk : b.avg_similarity-a.avg_similarity);
-  document.getElementById('count-badge').textContent = `${list.length} shown`;
-  if (!list.length) {
-    document.getElementById('conflicts').innerHTML = `
-      <div class="empty-state" role="status">
+/* Cards */
+function renderConflicts(){
+  if(!data)return;
+  document.getElementById('controls').style.display='flex';
+  document.getElementById('sec-divider').style.display='flex';
+  let list=(data.conflicts||[]).slice();
+  if(team!=='ALL')list=list.filter(c=>(c.teams||[]).includes(team));
+  list.sort((a,b)=>sort==='risk'?b.trust_risk-a.trust_risk:b.avg_similarity-a.avg_similarity);
+  document.getElementById('ctag').textContent=`${list.length} shown`;
+  if(!list.length){
+    document.getElementById('conflicts').innerHTML=`
+      <div class="empty" role="status">
         <div class="empty-icon" aria-hidden="true">🎉</div>
         <div class="empty-title">No conflicts for this filter</div>
-        <div>Try selecting a different team or resetting to All.</div>
-      </div>`; return;
+        <div class="empty-sub">Try selecting a different team or resetting to All teams.</div>
+      </div>`;return;
   }
-  document.getElementById('conflicts').innerHTML = list.map((c,idx)=>{
-    const rc   = riskColor(c.trust_risk);
-    const cid  = (c.metric_ids||[idx]).join('-');
-    const isRes = resolvedIds.has(cid);
-    const names  = c.names||[];
-    const teams  = c.teams||[];
-    const prblms = c.conflicts||[];
-    const defs   = c.definitions||[];
-    const chips  = teams.map(t=>`<span class="team-chip">${esc(t)}</span>`).join('');
-    const probs  = prblms.map(p=>`<li>${esc(p)}</li>`).join('');
-    const defHtml = defs.map(x=>`
+  document.getElementById('conflicts').innerHTML=list.map((c,i)=>{
+    const cid=(c.metric_ids||[i]).join('-');
+    const isRes=resolved.has(cid);
+    const rc=rC(c.trust_risk),rcls=rCls(c.trust_risk);
+    const chips=(c.teams||[]).map(t=>`<span class="tteam">${esc(t)}</span>`).join('');
+    const probs=(c.conflicts||[]).map(p=>`<li><span class="prob-icon" aria-hidden="true">!</span>${esc(p)}</li>`).join('');
+    const defs=(c.definitions||[]).map(x=>`
       <div class="def">
-        <div class="def-head">
-          <span class="def-team">${esc(x.team)}</span>
-          <span class="def-name">${esc(x.name)}</span>
-        </div>
+        <div class="def-head"><span class="def-team">${esc(x.team)}</span><span class="def-name">${esc(x.name)}</span></div>
         <div class="def-desc">${esc(x.description)}</div>
         <div class="def-sql-wrap">
-          <pre class="def-sql"><code>${esc(x.sql)}</code></pre>
-          <button class="copy-btn" onclick="copyCode(this,${JSON.stringify(x.sql||'')})" aria-label="Copy SQL for ${esc(x.team)} ${esc(x.name)}">Copy</button>
+          <pre class="def-sql">${esc(x.sql)}</pre>
+          <button class="copy-btn" onclick="cp(this,${JSON.stringify(x.sql||'')})" aria-label="Copy SQL for ${esc(x.team)}">Copy</button>
         </div>
       </div>`).join('');
-    const simLabel = c.retrieval_similarity!=null ? `${(c.retrieval_similarity*100).toFixed(0)}% match` : null;
-    const isSetup = c.recommendation && (c.recommendation.includes('ANTHROPIC_API_KEY') || c.recommendation.includes('To get AI-powered'));
-    const recHtml = !c.recommendation ? '' : isSetup
-      ? `<div class="rec-setup" role="note">
-           <span class="rec-setup-icon" aria-hidden="true">💡</span>
-           <span class="rec-setup-text">
-             <strong>Get AI recommendations:</strong> set
-             <code>ANTHROPIC_API_KEY</code> in your environment and click <strong>Re-run pipeline</strong>.
-           </span>
-         </div>`
-      : `<div class="rec" role="complementary" aria-label="Agent recommendation">
-           <div class="rec-head">
-             <span class="rec-label">🤖 Agent recommendation · RAG-grounded</span>
-             ${simLabel?`<span class="rec-match">${esc(simLabel)}</span>`:''}
-           </div>
-           <div class="rec-concept">${esc(c.recommended_concept)}</div>
-           <div class="rec-text">${esc(c.recommendation)}</div>
-           <div class="rec-owner">Canonical owner: <strong>${esc(c.glossary_owner)||'—'}</strong></div>
-         </div>`;
+    const sim=c.retrieval_similarity!=null?`${(c.retrieval_similarity*100).toFixed(0)}% match`:null;
+    const isSetup=c.recommendation&&(c.recommendation.includes('ANTHROPIC_API_KEY')||c.recommendation.includes('To get AI-powered'));
+    const rec=!c.recommendation?'':isSetup
+      ?`<div class="rec-setup" role="note">
+          <span class="rec-setup-icon" aria-hidden="true">💡</span>
+          <span class="rec-setup-text">
+            <strong>Get AI-powered recommendations:</strong> set <code>ANTHROPIC_API_KEY</code>
+            in your environment and click <strong>Re-run pipeline</strong>.
+          </span>
+        </div>`
+      :`<div class="rec" role="complementary" aria-label="AI recommendation">
+          <div class="rec-head">
+            <span class="rec-label">🤖 Agent recommendation · RAG-grounded</span>
+            ${sim?`<span class="rec-sim">${esc(sim)}</span>`:''}
+          </div>
+          <div class="rec-concept">${esc(c.recommended_concept)}</div>
+          <div class="rec-text">${esc(c.recommendation)}</div>
+          <div class="rec-owner">Canonical owner: <strong>${esc(c.glossary_owner)||'—'}</strong></div>
+        </div>`;
     return `
-    <article class="card ${isRes?'resolved':''}" data-cid="${esc(cid)}"
-             style="animation-delay:${idx*35}ms"
-             aria-label="Conflict: ${names.map(esc).join(', ')}"
+    <article class="card ${rcls} ${isRes?'resolved':''}" data-cid="${esc(cid)}"
+             style="animation-delay:${i*30}ms"
+             aria-label="Conflict: ${(c.names||[]).map(esc).join(', ')}"
              ${isRes?'aria-hidden="true"':''}>
       <div class="card-head">
         <div class="card-left">
-          <div class="card-names" aria-label="Conflicting metric names">
-            ${names.map((n,i)=>`<span class="name-item">${esc(n)}</span>${i<names.length-1?'<span class="name-sep" aria-hidden="true"> ≟ </span>':''}`).join('')}
-          </div>
-          <div class="team-chips" aria-label="Teams involved">${chips}</div>
+          <div class="card-names">${(c.names||[]).map((n,j)=>`<span>${esc(n)}</span>${j<(c.names||[]).length-1?'<span class="name-sep"> ≟ </span>':''}`).join('')}</div>
+          <div class="tteams">${chips}</div>
         </div>
         <div class="card-right">
-          <div class="gauge" aria-label="Trust risk score: ${c.trust_risk} — ${riskLabel(c.trust_risk)}">
-            <div class="gauge-val" style="color:${rc}">${c.trust_risk}</div>
-            <div class="gauge-risk-label ${riskClass(c.trust_risk)}">
-              <span aria-hidden="true">${riskIcon(c.trust_risk)}</span> ${riskLabel(c.trust_risk)}
-            </div>
-            <div class="gauge-bar" aria-hidden="true"><div class="gauge-fill" style="width:${c.trust_risk}%;background:${rc}"></div></div>
+          <div class="risk-badge" aria-label="Trust risk: ${c.trust_risk} — ${rLbl(c.trust_risk)}">
+            <div class="risk-number" style="color:${rc}">${c.trust_risk}</div>
+            <div class="risk-label ${rcls}"><span aria-hidden="true">${rIco(c.trust_risk)}</span> ${rLbl(c.trust_risk)}</div>
+            <div class="risk-bar" aria-hidden="true"><div class="risk-fill" style="width:${c.trust_risk}%;background:${rc}"></div></div>
           </div>
           <div class="card-actions">
-            <button class="action-btn" onclick="markResolved('${esc(cid)}')"
-                    aria-label="Mark conflict between ${names.map(esc).join(' and ')} as resolved"
-                    ${isRes?'disabled':''}>
-              ✓ Resolved
-            </button>
+            <button class="act-btn" onclick="markRes('${esc(cid)}')"
+                    aria-label="Mark as resolved" ${isRes?'disabled':''}>✓ Resolved</button>
           </div>
         </div>
       </div>
       <div class="card-body">
         <ul class="problems" aria-label="Detected problems">${probs}</ul>
-        <div class="defs" aria-label="Metric definitions">${defHtml}</div>
-        ${recHtml}
+        <div class="defs" aria-label="Team definitions">${defs}</div>
+        ${rec}
       </div>
     </article>`;
   }).join('');
 }
 
-/* ── Loading state ──────────────────────────────────────────────────────── */
-function showLoading(elapsed) {
-  // Cap fill at 95% then pulse — honest about uncertainty, no false completions
-  const rawPct = elapsed ? Math.min((elapsed/45)*100, 95) : 2;
-  const isPulsing = rawPct >= 95;
-  document.getElementById('conflicts').innerHTML = `
-    <div class="loading-state" role="status" aria-live="polite" aria-label="Pipeline running, please wait">
+/* Loading */
+function showLoading(elapsed){
+  const pct=elapsed?Math.min((elapsed/45)*100,95):2;
+  const pulsing=pct>=95;
+  document.getElementById('conflicts').innerHTML=`
+    <div class="loading" role="status" aria-live="polite" aria-label="Pipeline running">
       <div class="spinner" aria-hidden="true"></div>
       <div class="loading-title">Pipeline is running…</div>
-      <div class="loading-sub">
-        ${elapsed ? `${elapsed}s elapsed` : 'Starting up…'} — embedding ${elapsed>20?'and scoring':'metrics'}
-      </div>
-      <div class="elapsed-wrap">
-        <div class="elapsed-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${rawPct}">
-          <div class="elapsed-fill ${isPulsing?'pulsing':''}" style="width:${rawPct}%"></div>
+      <div class="loading-sub">${elapsed?`${elapsed}s elapsed`:'Starting up…'} — analysing metrics</div>
+      <div class="prog-wrap">
+        <div class="prog-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+          <div class="prog-fill ${pulsing?'pulsing':''}" style="width:${pct}%"></div>
         </div>
-        <div class="elapsed-label">${isPulsing?'Almost done…':Math.round(rawPct)+'% complete'}</div>
+        <div class="prog-label">${pulsing?'Almost done…':Math.round(pct)+'% complete'}</div>
       </div>
     </div>`;
-  document.getElementById('controls').style.display  = 'none';
-  document.getElementById('sec-title').style.display = 'none';
-  document.getElementById('kpis').innerHTML = '';
-  document.getElementById('pulse-dot').classList.add('running');
+  document.getElementById('controls').style.display='none';
+  document.getElementById('sec-divider').style.display='none';
+  document.getElementById('kpis').innerHTML='';
+  document.getElementById('dot').classList.add('running');
+  const b=document.getElementById('hero-badge'); if(b) b.textContent='';
 }
 
-/* ── Apply data ─────────────────────────────────────────────────────────── */
-function applyData(d) {
-  if (!d) return;
-  if (d.loading) { showLoading(d.elapsed); return; }
-  document.getElementById('pulse-dot').classList.remove('running');
-  currentData = d;
-  renderKPIs(d);
-  renderFilters(d);
-  renderConflicts();
-  // Show onboarding only when running the demo dataset — not for real data
-  const ob = document.getElementById('onboarding');
-  const dismissed = (() => { try { return localStorage.getItem('mg_onboarding_dismissed')==='1'; } catch(e){return false;} })();
-  if (!dismissed && isDemoData(d)) ob.classList.remove('hidden');
-  else ob.classList.add('hidden');
-  // Update last-run timestamp
-  const meta = d.meta||{};
-  if (meta.last_run_time) {
-    document.getElementById('refresh-label').textContent =
-      `updated ${new Date(meta.last_run_time*1000).toLocaleTimeString()}`;
-  }
-  if (meta.last_run_error) toast(`Pipeline error: ${meta.last_run_error}`, 'error', null, 6000);
+/* Apply */
+function applyData(d){
+  if(!d)return;
+  if(d.loading){showLoading(d.elapsed);return;}
+  document.getElementById('dot').classList.remove('running');
+  data=d; renderKPIs(d); renderFilters(d); renderConflicts();
+  const ob=document.getElementById('ob');
+  const dismissed=()=>{try{return localStorage.getItem('mg_ob')==='1';}catch{return false;}};
+  if(!dismissed()&&isDemo(d))ob.classList.remove('hidden'); else ob.classList.add('hidden');
+  const meta=d.meta||{};
+  if(meta.last_run_time) document.getElementById('refresh-label').textContent=`updated ${new Date(meta.last_run_time*1000).toLocaleTimeString()}`;
+  if(meta.last_run_error) toast(`Pipeline error: ${meta.last_run_error}`,'error',null,6000);
 }
 
-/* ── Fetch ──────────────────────────────────────────────────────────────── */
-async function fetchData() {
-  try {
-    const res = await fetch('/results');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    applyData(await res.json()); return true;
-  } catch { return false; }
+async function fetchData(){
+  try{const r=await fetch('/results');if(!r.ok)throw new Error(r.status);applyData(await r.json());return true;}
+  catch{return false;}
 }
 
-/* ── Re-run pipeline ─────────────────────────────────────────────────────── */
-async function triggerRun() {
-  const btn = document.getElementById('run-btn');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px" aria-hidden="true"></span> Running…`;
-  try {
-    const res  = await fetch('/run', {method:'POST'});
-    const data = await res.json();
-    if (data.message?.toLowerCase().includes('already running')) {
-      toast('Pipeline is already running — please wait.','info');
-    } else {
-      toast('Pipeline started! Results will appear shortly.','info');
-      showLoading(0);
-      countdown = 5;
-    }
-  } catch { toast('Cannot reach server. Is it running?','error'); }
-  finally {
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor" style="width:13px;height:13px" aria-hidden="true"><path d="M3 2.5a.5.5 0 0 1 .753-.431l10 5.5a.5.5 0 0 1 0 .862l-10 5.5A.5.5 0 0 1 3 13.5v-11z"/></svg> Re-run pipeline`;
+async function triggerRun(){
+  const btn=document.getElementById('run-btn');
+  btn.disabled=true;
+  btn.innerHTML=`<span class="spinner" style="width:13px;height:13px;border-width:2px" aria-hidden="true"></span> Running…`;
+  try{
+    const r=await fetch('/run',{method:'POST'}),d=await r.json();
+    if(d.message?.toLowerCase().includes('already')){toast('Pipeline already running — please wait.','info');}
+    else{toast('Pipeline started! Results will appear shortly.','info');showLoading(0);countdown=5;}
+  }catch{toast('Cannot reach server. Is it running?','error');}
+  finally{
+    btn.disabled=false;
+    btn.innerHTML=`<svg viewBox="0 0 16 16" fill="currentColor" style="width:13px;height:13px" aria-hidden="true"><path d="M3 2.5a.5.5 0 0 1 .753-.431l10 5.5a.5.5 0 0 1 0 .862l-10 5.5A.5.5 0 0 1 3 13.5v-11z"/></svg> Re-run pipeline`;
   }
 }
 
-/* ── Boot ────────────────────────────────────────────────────────────────── */
-(async () => {
-  const ok = await fetchData();
-  if (!ok && typeof MG_DATA !== 'undefined') applyData(MG_DATA);
-  else if (!ok) document.getElementById('conflicts').innerHTML = `
-    <div class="empty-state" role="status">
+/* Boot */
+(async()=>{
+  const ok=await fetchData();
+  if(!ok&&typeof MG_DATA!=='undefined')applyData(MG_DATA);
+  else if(!ok) document.getElementById('conflicts').innerHTML=`
+    <div class="empty" role="status">
       <div class="empty-icon" aria-hidden="true">🚀</div>
       <div class="empty-title">No results yet</div>
-      <div>Run <code>python src/report.py</code> to generate the first analysis, then reload.</div>
+      <div class="empty-sub">Run <code>python src/report.py</code> to generate the first analysis.</div>
     </div>`;
 })();
 
-/* ── Auto-refresh every 30s ─────────────────────────────────────────────── */
-let countdown = 30;
-const cdEl = document.getElementById('countdown');
+/* Auto-refresh */
+let countdown=30;const cdEl=document.getElementById('cd');
 setInterval(async()=>{
-  countdown -= 1; if(cdEl) cdEl.textContent = Math.max(0,countdown);
-  if (countdown <= 0) {
-    countdown = 30;
-    const ok = await fetchData();
-    if (!ok && typeof MG_DATA !== 'undefined') window.location.reload();
-  }
+  countdown-=1;if(cdEl)cdEl.textContent=Math.max(0,countdown);
+  if(countdown<=0){countdown=30;const ok=await fetchData();if(!ok&&typeof MG_DATA!=='undefined')window.location.reload();}
 },1000);
 
-/* ── Add Metrics panel ───────────────────────────────────────────────────── */
-function toggleAddPanel() {
-  const hdr   = document.getElementById('add-toggle');
-  const panel = document.getElementById('add-panel');
-  const open  = panel.classList.toggle('open');
-  hdr.setAttribute('aria-expanded', String(open));
+/* Add panel */
+function toggleAdd(){
+  const h=document.getElementById('add-hdr'),p=document.getElementById('add-panel');
+  const open=p.classList.toggle('open');h.setAttribute('aria-expanded',String(open));
 }
-const ADD_TABS = ['csv','dbt','cli','db'];
-function switchTab(name) {
+const TABS=['csv','dbt','cli','db'];
+function switchTab(n){
   document.querySelectorAll('.add-tab').forEach((t,i)=>{
-    const active = ADD_TABS[i]===name;
-    t.classList.toggle('active', active);
-    t.setAttribute('aria-selected', String(active));
-    const panel = document.getElementById(`tab-${ADD_TABS[i]}`);
-    panel.classList.toggle('active', active);
-    if (active) panel.removeAttribute('hidden'); else panel.setAttribute('hidden','');
+    const on=TABS[i]===n;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));
+    const pane=document.getElementById('tp-'+TABS[i]);
+    pane.classList.toggle('active',on);on?pane.removeAttribute('hidden'):pane.setAttribute('hidden','');
   });
 }
-function toggleDestructiveWarn(warnId, show) {
-  document.getElementById(warnId).classList.toggle('show', show);
+function showDestroy(id,show){document.getElementById(id).classList.toggle('show',show);}
+
+/* CSV upload */
+let csvFile=null;
+function csvDrop(e){e.preventDefault();document.getElementById('csv-drop').classList.remove('over');setCsv(e.dataTransfer.files[0]);}
+function csvPick(e){setCsv(e.target.files[0]);}
+function setCsv(f){if(!f)return;csvFile=f;document.getElementById('csv-title').textContent=f.name;document.getElementById('csv-btn').disabled=false;document.getElementById('csv-hint').style.display='none';}
+async function uploadCsv(){
+  if(!csvFile)return;
+  const btn=document.getElementById('csv-btn');btn.disabled=true;btn.textContent='Uploading…';
+  const fd=new FormData();fd.append('file',csvFile);fd.append('team',document.getElementById('csv-team').value);fd.append('replace',document.getElementById('csv-rep').checked);
+  const res=document.getElementById('csv-res');
+  try{
+    const r=await fetch('/ingest/csv',{method:'POST',body:fd}),d=await r.json();
+    if(r.ok){res.className='ingest-res ok';res.textContent=`✅ ${d.message}`;toast(d.message,'success');countdown=5;}
+    else{res.className='ingest-res err';res.textContent=`❌ ${d.detail}`;toast(d.detail,'error',null,6000);}
+  }catch{res.className='ingest-res err';res.textContent='❌ Upload failed — is the server running?';}
+  finally{btn.disabled=false;btn.innerHTML='⬆ Upload &amp; Ingest';}
 }
 
-/* ── CSV upload ──────────────────────────────────────────────────────────── */
-let csvFile = null;
-function handleCsvDrop(e) {
-  e.preventDefault();
-  document.getElementById('csv-drop').classList.remove('dragover');
-  setCsvFile(e.dataTransfer.files[0]);
-}
-function handleCsvSelect(e) { setCsvFile(e.target.files[0]); }
-function setCsvFile(f) {
-  if (!f) return;
-  csvFile = f;
-  document.getElementById('csv-drop-title').textContent = f.name;
-  document.getElementById('csv-upload-btn').disabled = false;
-  document.getElementById('csv-upload-hint').style.display = 'none';
-}
-async function uploadCsv() {
-  if (!csvFile) return;
-  const btn = document.getElementById('csv-upload-btn');
-  btn.disabled = true; btn.textContent = 'Uploading…';
-  const fd = new FormData();
-  fd.append('file', csvFile);
-  fd.append('team', document.getElementById('csv-team').value);
-  fd.append('replace', document.getElementById('csv-replace').checked);
-  const resultEl = document.getElementById('csv-result');
-  try {
-    const res = await fetch('/ingest/csv',{method:'POST',body:fd});
-    const data = await res.json();
-    if (res.ok) {
-      resultEl.className='ingest-result success'; resultEl.textContent=`✅ ${data.message}`;
-      toast(data.message,'success'); countdown=5;
-    } else {
-      resultEl.className='ingest-result error'; resultEl.textContent=`❌ ${data.detail}`;
-      toast(data.detail,'error',null,6000);
-    }
-  } catch { resultEl.className='ingest-result error'; resultEl.textContent='❌ Upload failed — is the server running?'; }
-  finally { btn.disabled=false; btn.innerHTML='⬆ Upload &amp; Ingest'; }
-}
-
-/* ── dbt upload ──────────────────────────────────────────────────────────── */
-let dbtFile = null;
-function handleDbtDrop(e) {
-  e.preventDefault();
-  document.getElementById('dbt-drop').classList.remove('dragover');
-  setDbtFile(e.dataTransfer.files[0]);
-}
-function handleDbtSelect(e) { setDbtFile(e.target.files[0]); }
-function setDbtFile(f) {
-  if (!f) return;
-  dbtFile = f;
-  document.getElementById('dbt-drop-title').textContent = f.name;
-  document.getElementById('dbt-upload-btn').disabled = false;
-  document.getElementById('dbt-upload-hint').style.display = 'none';
-}
-async function uploadDbt() {
-  if (!dbtFile) return;
-  const btn = document.getElementById('dbt-upload-btn');
-  btn.disabled = true; btn.textContent = 'Importing…';
-  const fd = new FormData();
-  fd.append('file', dbtFile);
-  fd.append('team', document.getElementById('dbt-team').value);
-  fd.append('replace', document.getElementById('dbt-replace').checked);
-  const resultEl = document.getElementById('dbt-result');
-  try {
-    const res = await fetch('/ingest/dbt',{method:'POST',body:fd});
-    const data = await res.json();
-    if (res.ok) {
-      resultEl.className='ingest-result success'; resultEl.textContent=`✅ ${data.message}`;
-      toast(data.message,'success'); countdown=5;
-    } else {
-      resultEl.className='ingest-result error'; resultEl.textContent=`❌ ${data.detail}`;
-      toast(data.detail,'error',null,6000);
-    }
-  } catch { resultEl.className='ingest-result error'; resultEl.textContent='❌ Upload failed — is the server running?'; }
-  finally { btn.disabled=false; btn.innerHTML='⬆ Import from dbt'; }
+/* dbt upload */
+let dbtFile=null;
+function dbtDrop(e){e.preventDefault();document.getElementById('dbt-drop').classList.remove('over');setDbt(e.dataTransfer.files[0]);}
+function dbtPick(e){setDbt(e.target.files[0]);}
+function setDbt(f){if(!f)return;dbtFile=f;document.getElementById('dbt-title').textContent=f.name;document.getElementById('dbt-btn').disabled=false;document.getElementById('dbt-hint').style.display='none';}
+async function uploadDbt(){
+  if(!dbtFile)return;
+  const btn=document.getElementById('dbt-btn');btn.disabled=true;btn.textContent='Importing…';
+  const fd=new FormData();fd.append('file',dbtFile);fd.append('team',document.getElementById('dbt-team').value);fd.append('replace',document.getElementById('dbt-rep').checked);
+  const res=document.getElementById('dbt-res');
+  try{
+    const r=await fetch('/ingest/dbt',{method:'POST',body:fd}),d=await r.json();
+    if(r.ok){res.className='ingest-res ok';res.textContent=`✅ ${d.message}`;toast(d.message,'success');countdown=5;}
+    else{res.className='ingest-res err';res.textContent=`❌ ${d.detail}`;toast(d.detail,'error',null,6000);}
+  }catch{res.className='ingest-res err';res.textContent='❌ Upload failed — is the server running?';}
+  finally{btn.disabled=false;btn.innerHTML='⬆ Import from dbt';}
 }
 </script>
 </body>
