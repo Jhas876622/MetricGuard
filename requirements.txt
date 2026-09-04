@@ -5,6 +5,7 @@ pydantic==2.13.4
 sqlglot==30.12.0
 fastapi==0.115.12
 uvicorn==0.34.3
+python-multipart==0.0.20
 # sentence-transformers and torch are intentionally excluded from the
 # Render deployment — they total ~800MB which exceeds the free tier limit.
 # The engine automatically falls back to TF-IDF (scikit-learn) when

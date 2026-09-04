@@ -24,7 +24,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -227,3 +227,106 @@ def run_pipeline(background_tasks: BackgroundTasks, use_llm: bool = True):
             "use_llm":  use_llm,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Ingestion endpoints — real teams upload their metric definitions here
+# ---------------------------------------------------------------------------
+
+@app.post("/ingest/csv")
+async def ingest_csv_endpoint(
+    file: UploadFile = File(...),
+    team: str = Form(default=""),
+    replace: bool = Form(default=False),
+):
+    """
+    Upload a CSV of metric definitions.
+
+    Required CSV columns: team, metric_name, sql, description
+    Optional columns:     id, filters, includes_refunds, time_grain
+
+    Download the template: GET /ingest/template
+    """
+    import tempfile
+    sys.path.insert(0, str(SRC_DIR))
+    from ingest import ingest_csv
+
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a .csv")
+
+    contents = await file.read()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode="wb") as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        added, updated = ingest_csv(tmp_path, default_team=team, replace=replace)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    return {
+        "status":  "ok",
+        "added":   added,
+        "updated": updated,
+        "message": f"{added} metrics added, {updated} updated. Click Re-run pipeline to analyse.",
+    }
+
+
+@app.post("/ingest/dbt")
+async def ingest_dbt_endpoint(
+    file: UploadFile = File(...),
+    team: str = Form(default=""),
+    replace: bool = Form(default=False),
+):
+    """
+    Upload a dbt manifest.json to extract metric/model definitions.
+    Generate it by running `dbt compile` in your dbt project.
+    """
+    import tempfile
+    from ingest import ingest_dbt_manifest
+
+    contents = await file.read()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="wb") as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        added, updated = ingest_dbt_manifest(tmp_path, team=team, replace=replace)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    return {
+        "status":  "ok",
+        "added":   added,
+        "updated": updated,
+        "message": f"{added} metrics added, {updated} updated from dbt manifest.",
+    }
+
+
+@app.get("/ingest/template")
+def download_csv_template():
+    """Return the CSV template teams should fill in."""
+    template_path = ROOT_DIR / "data" / "sample_metrics.csv"
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail="Template not found")
+    from fastapi.responses import Response
+    return Response(
+        content=template_path.read_text(encoding="utf-8"),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=metricguard_template.csv"},
+    )
+
+
+@app.get("/ingest/current")
+def get_current_metrics():
+    """Return all currently loaded metric definitions as JSON."""
+    from engine import load_metrics
+    try:
+        metrics = load_metrics()
+        return {"count": len(metrics), "metrics": metrics}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

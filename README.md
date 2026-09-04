@@ -9,8 +9,9 @@
 ![SQL](https://img.shields.io/badge/SQL-SQLGlot-blueviolet?style=for-the-badge)
 ![Dashboard](https://img.shields.io/badge/Dashboard-Interactive-green?style=for-the-badge)
 ![Pydantic](https://img.shields.io/badge/Pydantic-v2-red?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Tests-39%20passing-brightgreen?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+![Ingestion](https://img.shields.io/badge/Ingestion-CSV%20%7C%20dbt%20%7C%20DB%20%7C%20JSON-informational?style=for-the-badge)
 
 </p>
 
@@ -326,7 +327,10 @@ MetricGuard/
 ├── src/
 │   ├── engine.py    # Core: validation, embedding, similarity, conflict detection
 │   ├── genai.py     # GenAI: RAG retrieval + LLM agent recommendation
-│   └── report.py    # Orchestrator: pipeline → results.json + data.js
+│   ├── report.py    # Orchestrator: pipeline → results.json + data.js
+│   ├── ingest.py    # 4 ingestion adapters: CSV, dbt, DB (SQLAlchemy), JSON
+│   ├── cli.py       # Interactive setup wizard (no coding required)
+│   └── app.py       # FastAPI web server (6 endpoints incl. /ingest/csv, /ingest/dbt)
 │
 ├── output/
 │   ├── dashboard.html  # Static interactive dashboard (open in browser)
@@ -749,14 +753,15 @@ MetricGuard/
 
 ### Prerequisites
 - Python 3.10 or higher
-- Internet access on first run (to download the `all-MiniLM-L6-v2` model, ~90MB, cached locally after) — without it, the engine falls back to TF-IDF; see the reproducibility note in [§7](#7-results)
+- Internet access on first run (to download the `all-MiniLM-L6-v2` model, ~90MB, cached locally after) — without it, the engine falls back to TF-IDF automatically
 
 ### Install
 
 ```bash
 git clone https://github.com/Jhas876622/MetricGuard.git
 cd MetricGuard
-pip install -r requirements.txt
+pip install -r requirements.txt          # production deps (no torch)
+pip install -r requirements-dev.txt      # add this for neural embeddings locally
 ```
 
 ### Run the full pipeline
@@ -765,29 +770,221 @@ pip install -r requirements.txt
 python src/report.py
 ```
 
-This writes `output/results.json` and `output/data.js`, then prints the headline KPIs.
-
-```
-HEADLINE KPIs
-----------------------------------------
-  total_definitions_scanned          12
-  conflicting_definitions_found      12
-  conflict_groups                    4
-  teams_affected                     6
-  pct_definitions_in_conflict        100.0
-  highest_trust_risk                 100
-```
-
-*(You must run this at least once — `output/data.js` is gitignored and not committed, so `dashboard.html` will be blank on a fresh clone until this step runs.)*
-
 ### Open the dashboard
 
-Open `output/dashboard.html` in any browser — no server required. The dashboard:
-- Shows all 6 KPI tiles
-- Lists conflict cards ranked by trust-risk score
-- **Filter by team** — click any team chip to show only conflicts involving that team
-- **Sort by risk or similarity** — toggle between trust-risk score and embedding similarity
-- **Auto-refreshes every 30 seconds** — re-runs `report.py` and the dashboard reflects the new data automatically
+Open `output/dashboard.html` in any browser — no server required.
+
+### Web server (recommended)
+
+```bash
+uvicorn src.app:app --reload --port 8000
+# open http://localhost:8000
+```
+
+The web server enables:
+- **Upload your CSV** directly from the dashboard (no CLI needed)
+- **Import dbt manifest.json** with drag-and-drop
+- **Re-run pipeline** button from the browser
+- **Live auto-refresh** every 30 seconds via `/results` API
+
+---
+
+## Using MetricGuard with Your Real Team's Metrics
+
+> The demo data (`data/metric_definitions.json`) is synthetic — designed to show what MetricGuard catches. Here are the four ways to replace it with your team's real metrics.
+
+---
+
+### Method 1 — CSV Upload (easiest, no code)
+
+**Step 1:** Download the template from the dashboard → "Add your team's metrics" → CSV tab → **Download CSV template**
+
+Or directly:
+```bash
+curl http://localhost:8000/ingest/template -o metricguard_template.csv
+```
+
+**Step 2:** Fill it in with your real metrics:
+
+| team | metric_name | sql | description | filters | includes_refunds | time_grain |
+|---|---|---|---|---|---|---|
+| Finance | monthly_revenue | `SELECT SUM(amount) FROM orders WHERE status='completed'` | Revenue from completed orders | `status = 'completed'` | false | month |
+| Sales | monthly_revenue | `SELECT SUM(amount) FROM orders` | Revenue across all orders | | true | month |
+
+**Step 3:** Upload from the dashboard or CLI:
+```bash
+python src/ingest.py csv --file your_metrics.csv --team "Finance"
+```
+
+**Step 4:** Run the analysis:
+```bash
+python src/report.py
+```
+
+---
+
+### Method 2 — Interactive CLI Wizard (guided, no code)
+
+No file to fill in — the wizard asks you everything:
+
+```bash
+python src/cli.py
+```
+
+Output:
+```
+  ╔══════════════════════════════════════════════════╗
+  ║        MetricGuard  —  Setup Wizard             ║
+  ╚══════════════════════════════════════════════════╝
+
+  → Your team name: Finance
+  → Metric name: monthly_revenue
+  → SQL: SELECT SUM(amount) FROM orders WHERE status='completed'
+  → Description [Computes monthly revenue]: Revenue from completed orders only
+  → Filters: status = 'completed'
+  → Time grain [month]: month
+  → Includes refunds? (yes / no / skip): no
+
+  ✓ Metric 'monthly_revenue' saved.
+  → Add another metric? [Y/n]: y
+  ...
+  ✅  Saved 3 new metric(s) to data/metric_definitions.json
+  → Run the MetricGuard pipeline now? [Y/n]: y
+```
+
+---
+
+### Method 3 — dbt Project (automatic, zero manual work)
+
+If your team uses dbt, MetricGuard can read your entire metric catalogue automatically.
+
+**Step 1:** Generate the manifest in your dbt project:
+```bash
+cd /your/dbt/project
+dbt compile          # or dbt run
+```
+
+**Step 2:** Import it into MetricGuard:
+```bash
+python src/ingest.py dbt \
+  --manifest target/manifest.json \
+  --team "Analytics"
+```
+
+Or upload `target/manifest.json` via the dashboard → "Add your team's metrics" → dbt tab.
+
+**What gets extracted:**
+- All nodes of type `metric` (dbt Semantic Layer / dbt >= 1.6)
+- All model nodes tagged with `metric` in your `schema.yml`
+
+To tag a dbt model as a metric, add to your `schema.yml`:
+```yaml
+models:
+  - name: monthly_revenue
+    description: "Total revenue from completed orders"
+    tags: [metric]
+```
+
+---
+
+### Method 4 — Database Connection (pull directly from your warehouse)
+
+Connect MetricGuard directly to Postgres, Snowflake, BigQuery, Redshift, or MySQL.
+
+**Step 1:** Install your database driver:
+```bash
+pip install psycopg2-binary    # PostgreSQL
+pip install snowflake-sqlalchemy   # Snowflake
+pip install sqlalchemy-bigquery    # BigQuery
+pip install pymysql            # MySQL
+```
+
+**Option A — If you have a metric registry table:**
+```bash
+python src/ingest.py db \
+  --url "postgresql://analyst:password@dwh.company.com:5432/prod" \
+  --team "Analytics" \
+  --query "SELECT metric_name,
+                  sql_definition AS sql,
+                  description,
+                  filters,
+                  time_grain
+           FROM   analytics.metric_registry"
+```
+
+**Option B — Auto-discover metric views:**
+```bash
+# Without --query, MetricGuard scans information_schema.views
+# for any view with 'metric', 'kpi', or 'measure' in the name
+python src/ingest.py db \
+  --url "postgresql://analyst:password@host:5432/prod" \
+  --team "Analytics"
+```
+
+---
+
+### All ingestion CLI commands
+
+```bash
+# CSV
+python src/ingest.py csv  --file metrics.csv --team "Finance"
+python src/ingest.py csv  --file metrics.csv --team "Sales" --replace  # replace all existing
+
+# dbt manifest
+python src/ingest.py dbt  --manifest target/manifest.json
+python src/ingest.py dbt  --manifest target/manifest.json --team "Analytics"
+
+# Database
+python src/ingest.py db   --url "postgresql://user:pass@host/db" --team "Data"
+python src/ingest.py db   --url "snowflake://..." --team "Finance" --query "SELECT ..."
+
+# JSON file
+python src/ingest.py json --file my_metrics.json
+python src/ingest.py json --file my_metrics.json --replace
+```
+
+After any ingestion method, run:
+```bash
+python src/report.py           # CLI pipeline
+# OR
+# click "Re-run pipeline" in the dashboard
+```
+
+---
+
+### Adding to your CI/CD pipeline
+
+MetricGuard can run automatically on every data warehouse deployment:
+
+```yaml
+# .github/workflows/metricguard.yml
+name: MetricGuard Audit
+on:
+  push:
+    paths: ['metrics/**', 'dbt/**']
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: python src/ingest.py csv --file metrics/all_metrics.csv
+      - run: python src/report.py --no-llm
+      - run: |
+          # Fail the build if trust risk > 80
+          python -c "
+          import json
+          data = json.load(open('output/results.json'))
+          high_risk = [c for c in data['conflicts'] if c['trust_risk'] > 80]
+          if high_risk:
+              print(f'FAIL: {len(high_risk)} high-risk conflicts detected')
+              exit(1)
+          print('PASS: No high-risk conflicts')
+          "
+```
+
+---
 
 ### Run offline (no LLM)
 
@@ -795,7 +992,7 @@ Open `output/dashboard.html` in any browser — no server required. The dashboar
 python src/report.py --no-llm
 ```
 
-Skips all Claude API calls. All conflict detection, scoring, and RAG retrieval still runs — only the plain-English recommendation is replaced by a template.
+Skips all Claude API calls. All conflict detection, scoring, and RAG retrieval still runs — only the plain-English recommendation is replaced by a setup guide.
 
 ### Enable real LLM recommendations
 
@@ -805,7 +1002,6 @@ set ANTHROPIC_API_KEY=your_key_here
 
 # Mac / Linux
 export ANTHROPIC_API_KEY=your_key_here
-
 python src/report.py
 ```
 

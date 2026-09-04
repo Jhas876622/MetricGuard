@@ -1,0 +1,5 @@
+team,metric_name,sql,description,filters,includes_refunds,time_grain
+Finance,monthly_revenue,"SELECT SUM(amount) FROM orders WHERE status = 'completed'",Total revenue from completed orders only,"status = 'completed'",false,month
+Sales,monthly_revenue,"SELECT SUM(amount) FROM orders",Revenue across all orders including pending and refunded,,true,month
+Analytics,MAU,"SELECT COUNT(DISTINCT user_id) FROM events WHERE event_date >= CURRENT_DATE - INTERVAL '30 days'",Monthly active users — any event in trailing 30 days,"event_date >= CURRENT_DATE - 30",false,30d_rolling
+Product,active_users,"SELECT COUNT(DISTINCT user_id) FROM events WHERE DATE_TRUNC('month', event_date) = DATE_TRUNC('month', CURRENT_DATE)",Active users in the current calendar month,,false,calendar_month
