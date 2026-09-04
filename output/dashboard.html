@@ -4,199 +4,581 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetricGuard — Metric Trust Audit</title>
-<!-- data.js is loaded for local file:// mode only.                        -->
-<!-- In HTTP mode (FastAPI), /results is fetched dynamically via JS below. -->
-<script>
-// Attempt to load data.js (local mode). Failure is silently ignored —
-// the boot sequence below falls through to fetch('/results') in HTTP mode.
-</script>
 <style>
-  :root{
-    --ink:#0d1117; --panel:#151b23; --line:#232c38;
-    --dim:#7d8896; --text:#c9d4e0; --bright:#f0f6fc;
-    --safe:#3fb950; --warn:#d29922; --danger:#f85149;
-    --accent:#58a6ff;
-    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
-    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--ink);color:var(--text);font-family:var(--sans);line-height:1.5;
-    background-image:radial-gradient(circle at 20% -10%,rgba(88,166,255,.06),transparent 40%);
-    min-height:100vh;padding:32px 20px}
-  .wrap{max-width:1080px;margin:0 auto}
-  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;
-    color:var(--accent);margin-bottom:10px}
-  h1{font-size:34px;color:var(--bright);font-weight:700;letter-spacing:-.02em}
-  h1 .g{color:var(--danger)}
-  .sub{color:var(--dim);margin-top:8px;max-width:640px;font-size:14px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:14px;margin-bottom:34px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:18px 16px;position:relative;overflow:hidden}
-  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
-  .kpi.bad::before{background:var(--danger)}
-  .kpi .n{font-family:var(--mono);font-size:30px;color:var(--bright);font-weight:600;line-height:1}
-  .kpi .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
-  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:20px}
-  .ctrl-label{font-family:var(--mono);font-size:11px;color:var(--dim);
-    text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
-  .filter-chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;
-    background:var(--ink);border:1px solid var(--line);color:var(--dim);
-    cursor:pointer;transition:all .15s}
-  .chip:hover{border-color:var(--accent);color:var(--accent)}
-  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:600}
-  .chip.all-chip.active{background:var(--dim);border-color:var(--dim)}
-  .sort-btn{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:6px;
-    background:var(--panel);border:1px solid var(--line);color:var(--dim);
-    cursor:pointer;transition:all .15s;white-space:nowrap}
-  .sort-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .sort-btn.active{border-color:var(--accent);color:var(--accent)}
-  .refresh-info{font-family:var(--mono);font-size:10px;color:var(--dim);
-    margin-left:auto;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-  .refresh-dot{display:inline-block;width:6px;height:6px;border-radius:50%;
-    background:var(--safe);margin-right:4px;vertical-align:middle}
-  .run-btn{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:6px;
-    background:rgba(88,166,255,.1);border:1px solid var(--accent);color:var(--accent);
-    cursor:pointer;transition:all .15s;white-space:nowrap}
-  .run-btn:hover{background:rgba(88,166,255,.2)}
-  .run-btn:disabled{opacity:.4;cursor:not-allowed}
-  .sec-title{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
-    color:var(--dim);margin:8px 0 16px;display:flex;align-items:center;gap:10px}
-  .sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
-  .results-count{font-size:11px;color:var(--dim);font-family:var(--mono)}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-    margin-bottom:18px;overflow:hidden}
-  .card-head{display:flex;justify-content:space-between;align-items:flex-start;
-    gap:16px;padding:20px 22px;border-bottom:1px solid var(--line)}
-  .names{font-family:var(--mono);font-size:17px;color:var(--bright);font-weight:600}
-  .teams{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-  .team-chip{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:20px;
-    background:var(--ink);border:1px solid var(--line);color:var(--dim)}
-  .gauge{text-align:center;flex-shrink:0;min-width:92px}
-  .gauge .val{font-family:var(--mono);font-size:26px;font-weight:700}
-  .gauge .cap{font-size:10px;text-transform:uppercase;letter-spacing:.1em;
-    color:var(--dim);margin-top:2px}
-  .bar{height:5px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
-  .bar i{display:block;height:100%}
-  .body{padding:20px 22px}
-  .problems{list-style:none;margin-bottom:18px}
-  .problems li{font-size:13px;padding:8px 0 8px 22px;position:relative;
-    border-bottom:1px dashed var(--line)}
-  .problems li:last-child{border-bottom:none}
-  .problems li::before{content:'▲';position:absolute;left:0;color:var(--warn);
-    font-size:10px;top:10px}
-  .defs{display:grid;gap:10px;margin-bottom:18px}
-  .def{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
-  .def .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-  .def .team-lbl{font-family:var(--mono);font-size:12px;color:var(--accent)}
-  .def .mn{font-family:var(--mono);font-size:12px;color:var(--dim)}
-  .def .desc{font-size:12px;color:var(--text);margin-bottom:8px}
-  .def code{display:block;font-family:var(--mono);font-size:11px;color:var(--dim);
-    background:#0a0e14;border:1px solid var(--line);border-radius:6px;
-    padding:8px 10px;overflow-x:auto;white-space:pre-wrap}
-  .rec{border:1px solid var(--accent);border-radius:10px;padding:16px 18px;
-    background:rgba(88,166,255,.05)}
-  .rec .rh{font-family:var(--mono);font-size:11px;letter-spacing:.15em;
-    text-transform:uppercase;color:var(--accent);margin-bottom:6px;
-    display:flex;justify-content:space-between}
-  .rec .concept{color:var(--bright);font-weight:600;margin-bottom:8px;font-size:15px}
-  .rec .txt{font-size:13px;color:var(--text);white-space:pre-wrap}
-  .rec .owner{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:10px}
-  .empty{text-align:center;padding:48px 24px;color:var(--dim);
-    font-family:var(--mono);font-size:13px}
-  footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);
-    font-family:var(--mono);font-size:11px;color:var(--dim);
-    text-align:center;letter-spacing:.05em}
-  footer b{color:var(--text)}
+/* ─── Design tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg:      #080c12;
+  --surface: #0f1620;
+  --card:    #141e2b;
+  --border:  #1e2d3d;
+  --border2: #26394f;
+  --dim:     #6b7f96;
+  --muted:   #94a3b8;
+  --text:    #cbd5e1;
+  --bright:  #f1f5f9;
+  --safe:    #22c55e;
+  --warn:    #f59e0b;
+  --danger:  #ef4444;
+  --accent:  #3b82f6;
+  --accent2: #6366f1;
+  --glow:    rgba(59,130,246,.15);
+  --mono: 'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(59,130,246,.08), transparent),
+    radial-gradient(ellipse 40% 60% at 90% 60%, rgba(99,102,241,.05), transparent);
+}
+
+/* ─── Layout ───────────────────────────────────────────────────────────── */
+.wrap { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+
+/* ─── Top bar ──────────────────────────────────────────────────────────── */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 0; border-bottom:1px solid var(--border);
+  margin-bottom:40px; gap:12px; flex-wrap:wrap;
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon {
+  width:34px; height:34px; border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; color:#fff; letter-spacing:-.02em;
+  box-shadow: 0 0 20px rgba(59,130,246,.3);
+}
+.logo-text { font-size:18px; font-weight:700; color:var(--bright); letter-spacing:-.03em; }
+.logo-text span { color:var(--danger); }
+.topbar-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.run-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none; color:#fff; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+  box-shadow:0 2px 12px rgba(59,130,246,.3);
+}
+.run-btn:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(59,130,246,.45); }
+.run-btn:active { transform:translateY(0); }
+.run-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.run-btn svg { width:14px; height:14px; }
+.refresh-badge {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:20px;
+  background:var(--surface); border:1px solid var(--border);
+  font-family:var(--mono); font-size:11px; color:var(--dim);
+}
+.pulse { width:7px; height:7px; border-radius:50%; background:var(--safe); flex-shrink:0; animation:pulse 2s infinite; }
+.pulse.running { background:var(--warn); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+
+/* ─── Onboarding banner ────────────────────────────────────────────────── */
+.onboarding {
+  background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(99,102,241,.1));
+  border:1px solid rgba(59,130,246,.25); border-radius:var(--radius);
+  padding:20px 24px; margin-bottom:32px;
+  display:flex; align-items:flex-start; gap:16px;
+}
+.onboarding.hidden { display:none; }
+.onboarding-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+.onboarding-body { flex:1; }
+.onboarding-title { font-size:15px; font-weight:600; color:var(--bright); margin-bottom:6px; }
+.onboarding-text { font-size:13px; color:var(--muted); line-height:1.7; }
+.onboarding-text code {
+  font-family:var(--mono); font-size:12px;
+  background:rgba(59,130,246,.15); padding:2px 6px; border-radius:4px; color:var(--accent);
+}
+.onboarding-close {
+  background:none; border:none; color:var(--dim); cursor:pointer;
+  font-size:18px; line-height:1; padding:4px; flex-shrink:0;
+  transition:color .15s;
+}
+.onboarding-close:hover { color:var(--bright); }
+
+/* ─── Hero ─────────────────────────────────────────────────────────────── */
+.hero { margin-bottom:36px; }
+.hero-eyebrow {
+  font-family:var(--mono); font-size:11px; letter-spacing:.25em;
+  text-transform:uppercase; color:var(--accent); margin-bottom:10px;
+  display:flex; align-items:center; gap:8px;
+}
+.hero-eyebrow::before {
+  content:''; display:inline-block; width:20px; height:2px;
+  background:var(--accent); border-radius:2px;
+}
+.hero h1 {
+  font-size:clamp(28px,5vw,40px); font-weight:800;
+  color:var(--bright); letter-spacing:-.04em; line-height:1.1;
+  margin-bottom:12px;
+}
+.hero h1 .danger { color:var(--danger); }
+.hero-sub { font-size:15px; color:var(--muted); max-width:620px; line-height:1.7; }
+.hero-sub strong { color:var(--text); }
+
+/* ─── KPI grid ─────────────────────────────────────────────────────────── */
+.kpi-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px; margin-bottom:36px;
+}
+.kpi-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px 18px;
+  position:relative; overflow:hidden; transition:border-color .2s;
+}
+.kpi-card:hover { border-color:var(--border2); }
+.kpi-card::after {
+  content:''; position:absolute; inset:0; opacity:0;
+  background:linear-gradient(135deg,var(--glow),transparent);
+  transition:opacity .3s; pointer-events:none;
+}
+.kpi-card:hover::after { opacity:1; }
+.kpi-stripe {
+  position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--accent); border-radius:0 2px 2px 0;
+}
+.kpi-stripe.danger { background:var(--danger); }
+.kpi-stripe.warn   { background:var(--warn); }
+.kpi-n {
+  font-family:var(--mono); font-size:32px; font-weight:700;
+  color:var(--bright); line-height:1; margin-bottom:8px;
+  transition:all .4s;
+}
+.kpi-n.danger { color:var(--danger); }
+.kpi-l {
+  font-size:11px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.1em; font-weight:500;
+}
+
+/* ─── Controls ─────────────────────────────────────────────────────────── */
+.controls-row {
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:8px; margin-bottom:20px;
+}
+.ctrl-label {
+  font-family:var(--mono); font-size:10px; color:var(--dim);
+  text-transform:uppercase; letter-spacing:.12em; white-space:nowrap;
+}
+.chips { display:flex; flex-wrap:wrap; gap:5px; }
+.chip {
+  font-family:var(--mono); font-size:11px;
+  padding:4px 11px; border-radius:20px;
+  background:transparent; border:1px solid var(--border);
+  color:var(--dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.chip:hover { border-color:var(--accent); color:var(--accent); }
+.chip.active {
+  background:var(--accent); border-color:var(--accent);
+  color:#fff; font-weight:600;
+}
+.chip.all-chip.active { background:var(--border2); border-color:var(--border2); color:var(--text); }
+.sort-btn {
+  font-family:var(--mono); font-size:11px; padding:4px 12px;
+  border-radius:7px; background:var(--surface); border:1px solid var(--border);
+  color:var(--dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.sort-btn.active { border-color:var(--accent); color:var(--accent); }
+.sort-btn:hover  { border-color:var(--accent); color:var(--accent); }
+.spacer { flex:1; }
+.count-badge {
+  font-family:var(--mono); font-size:11px; color:var(--dim);
+  padding:4px 10px; background:var(--surface);
+  border:1px solid var(--border); border-radius:20px;
+}
+
+/* ─── Section title ─────────────────────────────────────────────────────── */
+.sec-title {
+  font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--dim);
+  margin-bottom:16px; display:flex; align-items:center; gap:10px;
+}
+.sec-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ─── Loading state ─────────────────────────────────────────────────────── */
+.loading-state {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:72px 24px; gap:20px;
+}
+.spinner {
+  width:44px; height:44px; border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--accent);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-title { font-size:17px; font-weight:600; color:var(--bright); }
+.loading-sub   { font-size:13px; color:var(--dim); text-align:center; max-width:340px; }
+.elapsed-bar {
+  width:240px; height:4px; background:var(--border);
+  border-radius:2px; overflow:hidden;
+}
+.elapsed-fill {
+  height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:2px; transition:width .5s ease;
+}
+
+/* ─── Empty state ───────────────────────────────────────────────────────── */
+.empty-state {
+  text-align:center; padding:64px 24px;
+  color:var(--dim); font-family:var(--mono); font-size:13px;
+}
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-title { font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; }
+
+/* ─── Conflict card ─────────────────────────────────────────────────────── */
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:14px;
+  overflow:hidden; transition:all .2s;
+  animation:fadeUp .3s ease both;
+}
+.card:hover { border-color:var(--border2); box-shadow:var(--shadow); }
+.card.resolved { opacity:.45; }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.card-head {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:16px; padding:20px 22px 16px; border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.card-left { flex:1; min-width:0; }
+.card-names {
+  font-family:var(--mono); font-size:16px; color:var(--bright);
+  font-weight:700; margin-bottom:10px; line-height:1.3;
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+}
+.name-sep { color:var(--dim); font-weight:400; font-size:12px; }
+.team-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.team-chip {
+  font-family:var(--mono); font-size:11px; padding:3px 9px;
+  border-radius:20px; background:rgba(59,130,246,.08);
+  border:1px solid rgba(59,130,246,.2); color:var(--accent);
+}
+.card-right {
+  display:flex; flex-direction:column; align-items:flex-end;
+  gap:8px; flex-shrink:0;
+}
+.gauge { text-align:center; min-width:84px; }
+.gauge-val {
+  font-family:var(--mono); font-size:28px; font-weight:800; line-height:1;
+}
+.gauge-label {
+  font-size:9px; text-transform:uppercase; letter-spacing:.12em;
+  color:var(--dim); margin-top:3px;
+}
+.gauge-bar {
+  height:4px; border-radius:2px; background:var(--border);
+  margin-top:7px; overflow:hidden;
+}
+.gauge-fill { height:100%; border-radius:2px; }
+.card-actions { display:flex; gap:6px; }
+.action-btn {
+  font-size:11px; padding:5px 11px; border-radius:6px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+  font-family:var(--mono);
+}
+.action-btn:hover { border-color:var(--safe); color:var(--safe); }
+.action-btn.dismiss:hover { border-color:var(--dim); color:var(--muted); }
+.card-body { padding:20px 22px; }
+
+/* ─── Problem list ──────────────────────────────────────────────────────── */
+.problems { list-style:none; margin-bottom:18px; }
+.problems li {
+  font-size:13px; padding:9px 0 9px 24px; position:relative;
+  border-bottom:1px dashed var(--border); color:var(--text);
+}
+.problems li:last-child { border-bottom:none; }
+.problems li::before {
+  content:''; position:absolute; left:2px; top:16px;
+  width:8px; height:8px; border-radius:50%; background:var(--warn);
+}
+
+/* ─── Definition panels ─────────────────────────────────────────────────── */
+.defs { display:grid; gap:9px; margin-bottom:18px; }
+@media(min-width:700px) { .defs { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } }
+.def {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:14px 16px;
+  transition:border-color .15s;
+}
+.def:hover { border-color:var(--border2); }
+.def-head {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:8px; gap:8px; flex-wrap:wrap;
+}
+.def-team { font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:600; }
+.def-name { font-family:var(--mono); font-size:11px; color:var(--dim); }
+.def-desc { font-size:12px; color:var(--text); margin-bottom:10px; line-height:1.6; }
+.def-sql {
+  font-family:var(--mono); font-size:11px; color:var(--muted);
+  background:#0a0f18; border:1px solid var(--border);
+  border-radius:6px; padding:10px 12px;
+  overflow-x:auto; white-space:pre-wrap; line-height:1.7;
+}
+
+/* ─── Recommendation box ────────────────────────────────────────────────── */
+.rec {
+  border:1px solid rgba(59,130,246,.3); border-radius:var(--radius-sm);
+  padding:18px 20px;
+  background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(99,102,241,.04));
+}
+.rec-head {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:10px; margin-bottom:10px; flex-wrap:wrap;
+}
+.rec-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); font-weight:600;
+}
+.rec-match {
+  font-family:var(--mono); font-size:10px; color:var(--dim);
+  background:rgba(59,130,246,.1); padding:2px 8px; border-radius:20px;
+}
+.rec-concept { font-size:15px; font-weight:700; color:var(--bright); margin-bottom:8px; }
+.rec-text { font-size:13px; color:var(--text); white-space:pre-wrap; line-height:1.7; }
+.rec-owner {
+  font-family:var(--mono); font-size:11px; color:var(--dim);
+  margin-top:10px; padding-top:10px; border-top:1px solid var(--border);
+}
+.rec-setup {
+  display:flex; align-items:flex-start; gap:10px; padding:14px 16px;
+  background:rgba(245,158,11,.05); border:1px solid rgba(245,158,11,.2);
+  border-radius:var(--radius-sm);
+}
+.rec-setup-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.rec-setup-text { font-size:12px; color:var(--muted); line-height:1.7; }
+.rec-setup-text code {
+  font-family:var(--mono); font-size:11px;
+  background:rgba(245,158,11,.15); padding:1px 5px; border-radius:3px; color:var(--warn);
+}
+
+/* ─── Toast notifications ───────────────────────────────────────────────── */
+.toast-container {
+  position:fixed; bottom:24px; right:24px;
+  display:flex; flex-direction:column; gap:8px; z-index:1000;
+}
+.toast {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 16px; border-radius:10px;
+  background:var(--card); border:1px solid var(--border);
+  box-shadow:var(--shadow); font-size:13px; color:var(--text);
+  min-width:260px; max-width:360px;
+  animation:toastIn .25s ease both;
+}
+.toast.success { border-color:rgba(34,197,94,.3); }
+.toast.error   { border-color:rgba(239,68,68,.3); }
+.toast.info    { border-color:rgba(59,130,246,.3); }
+.toast-icon { font-size:16px; flex-shrink:0; }
+.toast-msg  { flex:1; }
+@keyframes toastIn {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes toastOut {
+  to { opacity:0; transform:translateX(20px); }
+}
+
+/* ─── Footer ────────────────────────────────────────────────────────────── */
+footer {
+  margin-top:48px; padding-top:20px; border-top:1px solid var(--border);
+  font-family:var(--mono); font-size:11px; color:var(--dim);
+  text-align:center; letter-spacing:.05em;
+}
+footer a { color:var(--dim); text-decoration:none; }
+footer a:hover { color:var(--accent); }
+
+/* ─── Responsive ────────────────────────────────────────────────────────── */
+@media(max-width:600px) {
+  .topbar { flex-direction:column; align-items:flex-start; }
+  .card-head { flex-direction:column; }
+  .card-right { flex-direction:row; align-items:center; width:100%; justify-content:space-between; }
+}
 </style>
 </head>
 <body>
+
+<div class="toast-container" id="toasts"></div>
+
 <div class="wrap">
-  <header>
-    <div class="eyebrow">Metric Trust Audit · Semantic Consistency Report</div>
-    <h1>Metric<span class="g">Guard</span></h1>
-    <p class="sub">Scanned every team's metric definitions, matched them by
-      <b>meaning</b> using embeddings, and flagged where the same business
-      metric is computed differently — the silent reason dashboards disagree
-      and executives stop trusting the numbers.</p>
-  </header>
 
-  <div class="kpis" id="kpis"></div>
-
-  <div class="controls" id="controls">
-    <span class="ctrl-label">Filter by team</span>
-    <div class="filter-chips" id="team-filters"></div>
-    <span class="ctrl-label" style="margin-left:8px">Sort</span>
-    <button class="sort-btn active" id="sort-risk" onclick="setSort('risk')">Risk ↓</button>
-    <button class="sort-btn" id="sort-sim" onclick="setSort('sim')">Similarity ↓</button>
-    <button class="run-btn" id="run-btn" onclick="triggerRun()">&#9654; Re-run pipeline</button>
-    <div class="refresh-info">
-      <span><span class="refresh-dot"></span>auto-refresh in <span id="countdown">30</span>s</span>
-      <span id="last-run" style="font-size:9px;color:var(--dim)"></span>
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">M</div>
+      <div class="logo-text">Metric<span>Guard</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="refresh-badge">
+        <div class="pulse" id="pulse-dot"></div>
+        <span id="refresh-label">refresh in <span id="countdown">30</span>s</span>
+      </div>
+      <button class="run-btn" id="run-btn" onclick="triggerRun()">
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3 2.5a.5.5 0 0 1 .753-.431l10 5.5a.5.5 0 0 1 0 .862l-10 5.5A.5.5 0 0 1 3 13.5v-11z"/>
+        </svg>
+        Re-run pipeline
+      </button>
     </div>
   </div>
 
-  <div class="sec-title">
-    Detected conflicts · ranked by trust risk
-    <span class="results-count" id="results-count"></span>
+  <!-- Onboarding banner -->
+  <div class="onboarding" id="onboarding">
+    <div class="onboarding-icon">👋</div>
+    <div class="onboarding-body">
+      <div class="onboarding-title">Welcome to MetricGuard</div>
+      <div class="onboarding-text">
+        This dashboard automatically scans your team's metric definitions,
+        detects where the same business concept is computed differently,
+        and ranks the conflicts by business impact.<br><br>
+        <strong>Add your own metrics</strong> — edit <code>data/metric_definitions.json</code>
+        and click <strong>Re-run pipeline</strong>.<br>
+        <strong>Get AI recommendations</strong> — set <code>ANTHROPIC_API_KEY</code>
+        in your environment and re-run.
+      </div>
+    </div>
+    <button class="onboarding-close" onclick="dismissOnboarding()" title="Dismiss">×</button>
   </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Metric Trust Audit · Semantic Consistency Report</div>
+    <h1>Metric<span class="danger">Guard</span></h1>
+    <p class="hero-sub">
+      Scanned every team's metric definitions, matched them by <strong>meaning</strong>
+      using embeddings, and flagged where the same business metric is computed
+      differently — the silent reason dashboards disagree and executives stop
+      trusting the numbers.
+    </p>
+  </div>
+
+  <!-- KPI tiles -->
+  <div class="kpi-grid" id="kpis"></div>
+
+  <!-- Controls -->
+  <div class="controls-row" id="controls" style="display:none">
+    <span class="ctrl-label">Team</span>
+    <div class="chips" id="team-filters"></div>
+    <span class="ctrl-label">Sort</span>
+    <button class="sort-btn active" id="sort-risk" onclick="setSort('risk')">Risk ↓</button>
+    <button class="sort-btn" id="sort-sim" onclick="setSort('sim')">Similarity ↓</button>
+    <div class="spacer"></div>
+    <span class="count-badge" id="count-badge"></span>
+  </div>
+
+  <!-- Section heading -->
+  <div class="sec-title" id="sec-title" style="display:none">
+    Detected conflicts · ranked by trust risk
+  </div>
+
+  <!-- Conflict list -->
   <div id="conflicts"></div>
 
   <footer>
-    MetricGuard · embeddings + vector similarity + RAG-grounded LLM agent ·
-    engine reconciles definitions against a <b>governed glossary</b>
+    MetricGuard &nbsp;·&nbsp; embeddings + vector similarity + RAG-grounded LLM agent
+    &nbsp;·&nbsp; engine reconciles definitions against a <strong>governed glossary</strong>
   </footer>
 </div>
 
 <script>
-const riskColor = r => r >= 70 ? 'var(--danger)' : r >= 40 ? 'var(--warn)' : 'var(--safe)';
-
-function esc(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function riskColor(r) {
+  return r >= 70 ? 'var(--danger)' : r >= 40 ? 'var(--warn)' : 'var(--safe)';
+}
+function riskLabel(r) {
+  return r >= 70 ? 'Critical' : r >= 40 ? 'Warning' : 'Low';
 }
 
-let activeTeam = 'ALL';
-let sortMode   = 'risk';
-let currentData = null;
+/* ─── Toast ──────────────────────────────────────────────────────────────── */
+function toast(msg, type = 'info') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span><span class="toast-msg">${esc(msg)}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut .25s ease forwards';
+    setTimeout(() => el.remove(), 260);
+  }, 3200);
+}
 
+/* ─── Onboarding ─────────────────────────────────────────────────────────── */
+function dismissOnboarding() {
+  document.getElementById('onboarding').classList.add('hidden');
+  try { localStorage.setItem('mg_onboarding_dismissed','1'); } catch(e) {}
+}
+try {
+  if (localStorage.getItem('mg_onboarding_dismissed') === '1')
+    document.getElementById('onboarding').classList.add('hidden');
+} catch(e) {}
+
+/* ─── State ──────────────────────────────────────────────────────────────── */
+let currentData   = null;
+let activeTeam    = 'ALL';
+let sortMode      = 'risk';
+let resolvedIds   = new Set();
+
+try {
+  const saved = localStorage.getItem('mg_resolved');
+  if (saved) resolvedIds = new Set(JSON.parse(saved));
+} catch(e) {}
+
+function saveResolved() {
+  try { localStorage.setItem('mg_resolved', JSON.stringify([...resolvedIds])); } catch(e) {}
+}
+
+/* ─── KPI render ─────────────────────────────────────────────────────────── */
 function renderKPIs(d) {
-  if (!d || !d.kpis) return;
-  const kpiDefs = [
-    { n: d.kpis.total_definitions_scanned,        l: 'Definitions scanned' },
-    { n: d.kpis.conflicting_definitions_found,     l: 'In conflict',    bad: true },
-    { n: d.kpis.pct_definitions_in_conflict + '%', l: 'Conflict rate',  bad: true },
-    { n: d.kpis.conflict_groups,                   l: 'Conflict groups' },
-    { n: d.kpis.teams_affected,                    l: 'Teams affected' },
-    { n: d.kpis.highest_trust_risk,                l: 'Peak risk score', bad: true },
+  if (!d?.kpis) return;
+  const k = d.kpis;
+  const tiles = [
+    { n: k.total_definitions_scanned,        l:'Definitions scanned', stripe:'',       animated:false },
+    { n: k.conflicting_definitions_found,     l:'In conflict',         stripe:'danger', animated:true  },
+    { n: k.pct_definitions_in_conflict + '%', l:'Conflict rate',       stripe:'danger', animated:false },
+    { n: k.conflict_groups,                   l:'Conflict groups',     stripe:'',       animated:false },
+    { n: k.teams_affected,                    l:'Teams affected',      stripe:'',       animated:false },
+    { n: k.highest_trust_risk,                l:'Peak risk score',     stripe:'danger', animated:true  },
   ];
-  document.getElementById('kpis').innerHTML = kpiDefs
-    .map(k => `<div class="kpi ${k.bad ? 'bad' : ''}">
-      <div class="n">${esc(k.n)}</div><div class="l">${esc(k.l)}</div>
+  document.getElementById('kpis').innerHTML = tiles.map(t => `
+    <div class="kpi-card">
+      <div class="kpi-stripe ${t.stripe}"></div>
+      <div class="kpi-n ${t.stripe}" data-target="${t.n}">${t.n}</div>
+      <div class="kpi-l">${t.l}</div>
     </div>`).join('');
 }
 
+/* ─── Team filter chips ──────────────────────────────────────────────────── */
 function renderFilters(d) {
-  if (!d || !d.conflicts) return;
-  const allTeams = [...new Set(
-    (d.conflicts || []).flatMap(c => Array.isArray(c.teams) ? c.teams : [])
-  )].sort();
+  const teams = [...new Set((d.conflicts||[]).flatMap(c => c.teams||[]))].sort();
   document.getElementById('team-filters').innerHTML =
-    `<button class="chip all-chip active" onclick="setTeam('ALL')">All teams</button>` +
-    allTeams.map(t =>
-      `<button class="chip" data-team="${esc(t)}" onclick="setTeam('${esc(t)}')">${esc(t)}</button>`
-    ).join('');
+    `<button class="chip all-chip active" onclick="setTeam('ALL')">All</button>` +
+    teams.map(t => `<button class="chip" data-team="${esc(t)}" onclick="setTeam('${esc(t)}')">${esc(t)}</button>`).join('');
 }
 
 function setTeam(team) {
   activeTeam = team;
-  document.querySelectorAll('.filter-chips .chip').forEach(btn => {
-    btn.classList.toggle('active',
-      team === 'ALL' ? btn.classList.contains('all-chip') : btn.dataset.team === team);
+  document.querySelectorAll('.chips .chip').forEach(b => {
+    b.classList.toggle('active',
+      team === 'ALL' ? b.classList.contains('all-chip') : b.dataset.team === team);
   });
   renderConflicts();
 }
@@ -208,84 +590,169 @@ function setSort(mode) {
   renderConflicts();
 }
 
+/* ─── Conflict cards ─────────────────────────────────────────────────────── */
+function markResolved(id) {
+  resolvedIds.add(id); saveResolved();
+  const card = document.querySelector(`[data-conflict-id="${id}"]`);
+  if (card) card.classList.add('resolved');
+  toast('Conflict marked as resolved', 'success');
+}
+
 function renderConflicts() {
   if (!currentData) return;
-  const container = document.getElementById('conflicts');
-  const countEl   = document.getElementById('results-count');
-  let conflicts   = (currentData.conflicts || []).slice();
+  document.getElementById('controls').style.display   = 'flex';
+  document.getElementById('sec-title').style.display  = 'flex';
 
+  let list = (currentData.conflicts || []).slice();
   if (activeTeam !== 'ALL')
-    conflicts = conflicts.filter(c => Array.isArray(c.teams) && c.teams.includes(activeTeam));
-  conflicts.sort((a, b) => sortMode === 'risk'
-    ? b.trust_risk - a.trust_risk : b.avg_similarity - a.avg_similarity);
+    list = list.filter(c => (c.teams||[]).includes(activeTeam));
+  list.sort((a,b) => sortMode === 'risk'
+    ? b.trust_risk - a.trust_risk
+    : b.avg_similarity - a.avg_similarity);
 
-  countEl.textContent = `${conflicts.length} shown`;
-  if (!conflicts.length) {
-    container.innerHTML = `<div class="empty">No conflicts match the current filter.</div>`;
+  document.getElementById('count-badge').textContent = `${list.length} shown`;
+
+  if (!list.length) {
+    document.getElementById('conflicts').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🎉</div>
+        <div class="empty-title">No conflicts found for this filter</div>
+        <div>Try selecting a different team or resetting the filter.</div>
+      </div>`;
     return;
   }
 
-  container.innerHTML = conflicts.map(c => {
-    const rc     = riskColor(c.trust_risk);
-    const teams  = Array.isArray(c.teams)       ? c.teams       : [];
-    const names  = Array.isArray(c.names)       ? c.names       : [];
-    const prblms = Array.isArray(c.conflicts)   ? c.conflicts   : [];
-    const defs   = Array.isArray(c.definitions) ? c.definitions : [];
-    const chips  = teams.map(t => `<span class="team-chip">${esc(t)}</span>`).join('');
-    const probs  = prblms.map(p => `<li>${esc(p)}</li>`).join('');
+  document.getElementById('conflicts').innerHTML = list.map((c, idx) => {
+    const rc      = riskColor(c.trust_risk);
+    const names   = (c.names   ||[]);
+    const teams   = (c.teams   ||[]);
+    const prblms  = (c.conflicts||[]);
+    const defs    = (c.definitions||[]);
+    const conflictId = (c.metric_ids||[idx]).join('-');
+    const isResolved = resolvedIds.has(conflictId);
+
+    const chips   = teams.map(t => `<span class="team-chip">${esc(t)}</span>`).join('');
+    const probs   = prblms.map(p => `<li>${esc(p)}</li>`).join('');
     const defHtml = defs.map(x => `
       <div class="def">
-        <div class="dh"><span class="team-lbl">${esc(x.team)}</span><span class="mn">${esc(x.name)}</span></div>
-        <div class="desc">${esc(x.description)}</div>
-        <code>${esc(x.sql)}</code>
+        <div class="def-head">
+          <span class="def-team">${esc(x.team)}</span>
+          <span class="def-name">${esc(x.name)}</span>
+        </div>
+        <div class="def-desc">${esc(x.description)}</div>
+        <div class="def-sql">${esc(x.sql)}</div>
       </div>`).join('');
-    const simLabel = c.retrieval_similarity != null ? c.retrieval_similarity : 'N/A';
-    const rec = c.recommendation ? `
-      <div class="rec">
-        <div class="rh"><span>Agent recommendation · RAG-grounded</span><span>match ${esc(simLabel)}</span></div>
-        <div class="concept">${esc(c.recommended_concept)}</div>
-        <div class="txt">${esc(c.recommendation)}</div>
-        <div class="owner">Canonical owner: ${esc(c.glossary_owner) || '—'}</div>
-      </div>` : '';
+
+    const simLabel = c.retrieval_similarity != null
+      ? `${(c.retrieval_similarity * 100).toFixed(0)}% match`
+      : null;
+
+    // Determine if recommendation is the fallback template
+    const isSetupPrompt = c.recommendation &&
+      (c.recommendation.includes('ANTHROPIC_API_KEY') ||
+       c.recommendation.includes('To get AI-powered'));
+
+    let recHtml = '';
+    if (c.recommendation) {
+      recHtml = isSetupPrompt
+        ? `<div class="rec-setup">
+            <span class="rec-setup-icon">💡</span>
+            <span class="rec-setup-text">
+              <strong>Get AI-powered recommendations:</strong><br>
+              Set <code>ANTHROPIC_API_KEY</code> in your environment and click
+              <strong>Re-run pipeline</strong> for Claude to analyse each conflict
+              and recommend the exact SQL changes each team should make.
+            </span>
+           </div>`
+        : `<div class="rec">
+            <div class="rec-head">
+              <span class="rec-label">🤖 Agent recommendation · RAG-grounded</span>
+              ${simLabel ? `<span class="rec-match">${esc(simLabel)}</span>` : ''}
+            </div>
+            <div class="rec-concept">${esc(c.recommended_concept)}</div>
+            <div class="rec-text">${esc(c.recommendation)}</div>
+            <div class="rec-owner">Canonical owner: <strong>${esc(c.glossary_owner)||'—'}</strong></div>
+           </div>`;
+    }
+
     return `
-    <div class="card">
+    <div class="card ${isResolved ? 'resolved' : ''}" data-conflict-id="${esc(conflictId)}"
+         style="animation-delay:${idx*40}ms">
       <div class="card-head">
-        <div><div class="names">${names.map(esc).join('  ≟  ')}</div><div class="teams">${chips}</div></div>
-        <div class="gauge">
-          <div class="val" style="color:${rc}">${esc(c.trust_risk)}</div>
-          <div class="cap">trust risk</div>
-          <div class="bar"><i style="width:${c.trust_risk}%;background:${rc}"></i></div>
+        <div class="card-left">
+          <div class="card-names">
+            ${names.map(esc).join('<span class="name-sep"> ≟ </span>')}
+          </div>
+          <div class="team-chips">${chips}</div>
+        </div>
+        <div class="card-right">
+          <div class="gauge">
+            <div class="gauge-val" style="color:${rc}">${c.trust_risk}</div>
+            <div class="gauge-label">${riskLabel(c.trust_risk)} risk</div>
+            <div class="gauge-bar">
+              <div class="gauge-fill" style="width:${c.trust_risk}%;background:${rc}"></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn" onclick="markResolved('${esc(conflictId)}')" title="Mark as resolved">
+              ✓ Resolved
+            </button>
+          </div>
         </div>
       </div>
-      <div class="body"><ul class="problems">${probs}</ul><div class="defs">${defHtml}</div>${rec}</div>
+      <div class="card-body">
+        <ul class="problems">${probs}</ul>
+        <div class="defs">${defHtml}</div>
+        ${recHtml}
+      </div>
     </div>`;
   }).join('');
 }
 
+/* ─── Loading state ──────────────────────────────────────────────────────── */
+function showLoading(elapsed) {
+  const pct = Math.min((elapsed||0) / 30 * 100, 95);
+  document.getElementById('conflicts').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-title">Pipeline is running…</div>
+      <div class="loading-sub">
+        Embedding ${elapsed ? `(${elapsed}s elapsed)` : ''} — analysing metric definitions
+        with semantic similarity and SQL structural parsing.
+      </div>
+      <div class="elapsed-bar">
+        <div class="elapsed-fill" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  document.getElementById('controls').style.display  = 'none';
+  document.getElementById('sec-title').style.display = 'none';
+  document.getElementById('kpis').innerHTML = '';
+  document.getElementById('pulse-dot').classList.add('running');
+}
+
+/* ─── Apply data ─────────────────────────────────────────────────────────── */
 function applyData(d) {
   if (!d) return;
-  if (d.loading) {
-    document.getElementById('conflicts').innerHTML =
-      `<div class="empty">Pipeline is running — results will appear shortly...</div>`;
-    document.getElementById('results-count').textContent = '';
-    return;
-  }
+
+  if (d.loading) { showLoading(d.elapsed); return; }
+
+  document.getElementById('pulse-dot').classList.remove('running');
   currentData = d;
   renderKPIs(d);
   renderFilters(d);
   renderConflicts();
+
   const meta = d.meta || {};
   if (meta.last_run_time) {
-    document.getElementById('last-run').textContent =
-      `last run ${new Date(meta.last_run_time * 1000).toLocaleTimeString()}`;
+    const t = new Date(meta.last_run_time * 1000).toLocaleTimeString();
+    document.getElementById('refresh-label').textContent = `updated ${t}`;
   }
   if (meta.last_run_error) {
-    const el = document.getElementById('last-run');
-    el.textContent = `error: ${meta.last_run_error}`;
-    el.style.color = 'var(--danger)';
+    toast(`Pipeline error: ${meta.last_run_error}`, 'error');
   }
 }
 
+/* ─── Data fetching ──────────────────────────────────────────────────────── */
 async function fetchData() {
   try {
     const res = await fetch('/results');
@@ -295,35 +762,57 @@ async function fetchData() {
   } catch { return false; }
 }
 
+/* ─── Re-run pipeline ────────────────────────────────────────────────────── */
 async function triggerRun() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
-  btn.textContent = 'Running…';
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Running…`;
   try {
-    await fetch('/run', { method: 'POST' });
-    await new Promise(r => setTimeout(r, 2000));
-    await fetchData();
+    const res = await fetch('/run', { method:'POST' });
+    const data = await res.json();
+    if (res.status === 202 && data.message?.includes('already running')) {
+      toast('Pipeline is already running — please wait', 'info');
+    } else {
+      toast('Pipeline started! Results will appear shortly.', 'info');
+      showLoading(0);
+    }
+    countdown = 5;
+  } catch(e) {
+    toast('Could not reach the server. Is it running?', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '&#9654; Re-run pipeline';
+    btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor" style="width:14px;height:14px">
+      <path d="M3 2.5a.5.5 0 0 1 .753-.431l10 5.5a.5.5 0 0 1 0 .862l-10 5.5A.5.5 0 0 1 3 13.5v-11z"/>
+    </svg> Re-run pipeline`;
   }
 }
 
-// Boot: try HTTP first, fall back to MG_DATA (local file mode)
+/* ─── Boot sequence ──────────────────────────────────────────────────────── */
 (async () => {
   const ok = await fetchData();
-  if (!ok && typeof MG_DATA !== 'undefined') applyData(MG_DATA);
-  else if (!ok)
-    document.getElementById('conflicts').innerHTML =
-      `<div class="empty">No data. Run <code>python src/report.py</code> first.</div>`;
+  // Fallback: local file:// mode — try injected MG_DATA
+  if (!ok) {
+    if (typeof MG_DATA !== 'undefined') { applyData(MG_DATA); }
+    else {
+      document.getElementById('conflicts').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🚀</div>
+          <div class="empty-title">No results yet</div>
+          <div>Run <code style="font-family:var(--mono);font-size:12px;
+            background:var(--surface);padding:2px 6px;border-radius:4px">
+            python src/report.py</code> to generate the first analysis.</div>
+        </div>`;
+    }
+  }
 })();
 
-// Auto-refresh
+/* ─── Auto-refresh every 30s ────────────────────────────────────────────── */
 let countdown = 30;
 const countdownEl = document.getElementById('countdown');
+
 setInterval(async () => {
   countdown -= 1;
-  if (countdownEl) countdownEl.textContent = countdown;
+  if (countdownEl) countdownEl.textContent = Math.max(0, countdown);
   if (countdown <= 0) {
     countdown = 30;
     const ok = await fetchData();

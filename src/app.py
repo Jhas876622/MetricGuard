@@ -1,21 +1,18 @@
 """
 MetricGuard - FastAPI Web Application
 ======================================
-Serves the dashboard over HTTP and exposes the pipeline as an API.
-
 Endpoints:
-  GET  /          → serves the interactive dashboard HTML
-  GET  /results   → returns the latest pipeline payload as JSON
-  POST /run       → triggers the full pipeline and returns fresh results
-  GET  /health    → liveness check (used by Render health checks)
+  GET  /          → interactive dashboard HTML
+  GET  /results   → latest pipeline payload as JSON
+  GET  /health    → liveness check  (always 200 when process is alive)
+  GET  /ready     → readiness check (503 until results.json exists)
+  POST /run       → trigger a fresh pipeline run (background thread)
 
 Run locally:
     uvicorn src.app:app --reload --port 8000
-    # then open http://localhost:8000
 
 Deploy to Render:
-    - Set environment variable ANTHROPIC_API_KEY in Render dashboard
-    - Start command: uvicorn src.app:app --host 0.0.0.0 --port $PORT
+    Start command: uvicorn src.app:app --host 0.0.0.0 --port $PORT
 """
 
 import json
@@ -24,6 +21,7 @@ import os
 import sys
 import threading
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -31,16 +29,15 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # ---------------------------------------------------------------------------
-# Path setup — make src/ importable when running from project root
+# Path setup
 # ---------------------------------------------------------------------------
-SRC_DIR = Path(__file__).parent
+SRC_DIR  = Path(__file__).parent
 ROOT_DIR = SRC_DIR.parent
 sys.path.insert(0, str(SRC_DIR))
 
-OUTPUT_DIR = ROOT_DIR / "output"
+OUTPUT_DIR     = ROOT_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
-
-RESULTS_PATH = OUTPUT_DIR / "results.json"
+RESULTS_PATH   = OUTPUT_DIR / "results.json"
 DASHBOARD_PATH = OUTPUT_DIR / "dashboard.html"
 
 # ---------------------------------------------------------------------------
@@ -54,39 +51,65 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# App
+# Thread-safe pipeline state
+# threading.Event is mutable — no `global` needed to call .set()/.clear()
 # ---------------------------------------------------------------------------
-from contextlib import asynccontextmanager
+_pipeline_running   = threading.Event()   # set = running, clear = idle
+_pipeline_started   : float | None = None  # epoch time when current run began
+_last_run_time      : float | None = None  # epoch time of last completed run
+_last_run_error     : str   | None = None  # error message if last run failed
 
+
+# ---------------------------------------------------------------------------
+# Pipeline helpers
+# ---------------------------------------------------------------------------
+def _run_pipeline_background(use_llm: bool) -> None:
+    global _pipeline_started, _last_run_time, _last_run_error
+    try:
+        logger.info("Background pipeline started (use_llm=%s)", use_llm)
+        from report import main as run_report
+        run_report(use_llm=use_llm)
+        _last_run_time  = time.time()
+        _last_run_error = None
+        logger.info("Background pipeline completed successfully")
+    except Exception as exc:
+        _last_run_error = str(exc)
+        logger.error("Background pipeline failed: %s", exc)
+    finally:
+        _pipeline_running.clear()
+        _pipeline_started = None
+
+
+def _start_pipeline(use_llm: bool) -> None:
+    """Set state and spawn the background thread."""
+    global _pipeline_started
+    _pipeline_started = time.time()
+    _pipeline_running.set()
+    threading.Thread(
+        target=_run_pipeline_background,
+        args=(use_llm,),
+        daemon=True,
+    ).start()
+
+
+# ---------------------------------------------------------------------------
+# Lifespan — auto-run pipeline on startup if no results exist
+# ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifespan handler (replaces deprecated @app.on_event("startup")).
-    Runs the pipeline once on startup if no results exist yet.
-
-    On Render free tier the neural model download can stall.
-    Setting HF_HUB_OFFLINE=1 in the environment forces TF-IDF fallback
-    so the pipeline always completes within a few seconds.
-    """
     global _last_run_time
     if not RESULTS_PATH.exists():
         logger.info("No existing results — running initial pipeline on startup")
-        # Run with use_llm=False on startup so the server responds immediately.
-        # The user can trigger a full LLM run via POST /run once the server is up.
-        use_llm = bool(os.environ.get("ANTHROPIC_API_KEY"))
-        _pipeline_running.set()
-        thread = threading.Thread(
-            target=_run_pipeline_background,
-            args=(use_llm,),
-            daemon=True,
-        )
-        thread.start()
+        _start_pipeline(use_llm=bool(os.environ.get("ANTHROPIC_API_KEY")))
     else:
-        logger.info("Existing results found at %s — skipping startup run", RESULTS_PATH)
+        logger.info("Existing results found — skipping startup run")
         _last_run_time = RESULTS_PATH.stat().st_mtime
-    yield   # app runs here
+    yield
 
 
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
 app = FastAPI(
     title="MetricGuard",
     description="AI-powered metric consistency auditor",
@@ -101,43 +124,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------------------------
-# Thread-safe pipeline state
-# ---------------------------------------------------------------------------
-# threading.Event is used instead of a plain bool so reads and writes are
-# atomic across threads. _pipeline_running.is_set() == True means a run is
-# in progress; clear() marks it done. A plain bool is not thread-safe in
-# CPython when modified from a background thread and read from the main thread.
-# ---------------------------------------------------------------------------
-_pipeline_running = threading.Event()   # set = running, clear = idle
-_last_run_time: float | None = None
-_last_run_error: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Pipeline runner
-# ---------------------------------------------------------------------------
-def _run_pipeline(use_llm: bool = True) -> dict:
-    """Run the full MetricGuard pipeline and return the payload."""
-    from report import main as run_report
-    payload = run_report(use_llm=use_llm)
-    return payload
-
-
-def _run_pipeline_background(use_llm: bool) -> None:
-    global _last_run_time, _last_run_error
-    try:
-        logger.info("Background pipeline started (use_llm=%s)", use_llm)
-        _run_pipeline(use_llm=use_llm)
-        _last_run_time = time.time()
-        _last_run_error = None
-        logger.info("Background pipeline completed successfully")
-    except Exception as exc:
-        _last_run_error = str(exc)
-        logger.error("Background pipeline failed: %s", exc)
-    finally:
-        _pipeline_running.clear()   # mark idle — atomic on threading.Event
-
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -145,13 +131,28 @@ def _run_pipeline_background(use_llm: bool) -> None:
 
 @app.get("/health")
 def health():
-    """Liveness check for Render and other platforms."""
+    """Liveness — always 200 while the process is alive."""
     return {
         "status": "ok",
         "pipeline_running": _pipeline_running.is_set(),
-        "last_run_time": _last_run_time,
-        "results_exist": RESULTS_PATH.exists(),
+        "results_exist":    RESULTS_PATH.exists(),
+        "last_run_time":    _last_run_time,
     }
+
+
+@app.get("/ready")
+def ready():
+    """
+    Readiness — 200 only when results are available.
+    Returns 503 while the pipeline is still running on first boot.
+    Used by load balancers / uptime monitors.
+    """
+    if not RESULTS_PATH.exists():
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "reason": "Pipeline has not completed yet."},
+        )
+    return {"ready": True}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -165,64 +166,64 @@ def dashboard():
 @app.get("/results")
 def get_results():
     """
-    Return the latest pipeline results as JSON.
-    The dashboard calls this endpoint on load and every 30 seconds
-    (replaces the static data.js approach used in the local file version).
+    Latest pipeline payload as JSON.
+    Returns a loading state (not 404) while the first run is in progress
+    so the dashboard can show a progress indicator immediately.
     """
+    elapsed = (
+        round(time.time() - _pipeline_started)
+        if _pipeline_started else None
+    )
+
     if _pipeline_running.is_set() and not RESULTS_PATH.exists():
         return JSONResponse(content={
-            "loading": True,
-            "message": "Pipeline is running, please wait...",
-            "kpis": {},
+            "loading":  True,
+            "message":  "Pipeline is running…",
+            "elapsed":  elapsed,
+            "kpis":     {},
             "conflicts": [],
         })
 
     if not RESULTS_PATH.exists():
         raise HTTPException(
             status_code=404,
-            detail="No results yet. POST /run to trigger the pipeline."
+            detail="No results yet — POST /run to trigger the pipeline.",
         )
 
     with open(RESULTS_PATH) as f:
         payload = json.load(f)
 
     payload["meta"] = {
-        "last_run_time": _last_run_time,
         "pipeline_running": _pipeline_running.is_set(),
-        "last_run_error": _last_run_error,
+        "elapsed":          elapsed,
+        "last_run_time":    _last_run_time,
+        "last_run_error":   _last_run_error,
     }
     return JSONResponse(content=payload)
 
 
 @app.post("/run")
-def run_pipeline(
-    background_tasks: BackgroundTasks,
-    use_llm: bool = True,
-):
+def run_pipeline(background_tasks: BackgroundTasks, use_llm: bool = True):
     """
-    Trigger a fresh pipeline run.
-    Runs in a background thread so the response returns immediately.
-    Poll GET /results or GET /health to check completion.
-
-    Query params:
-      use_llm=false   skip LLM calls (faster, works without ANTHROPIC_API_KEY)
+    Trigger a fresh pipeline run in a background thread.
+    Returns 202 immediately; poll GET /results for completion.
     """
-    global _pipeline_running
-
     if _pipeline_running.is_set():
+        elapsed = round(time.time() - _pipeline_started) if _pipeline_started else "?"
         return JSONResponse(
             status_code=202,
-            content={"message": "Pipeline already running. Poll /health for status."},
+            content={
+                "message": "Pipeline already running.",
+                "elapsed": elapsed,
+            },
         )
 
-    _pipeline_running.set()
-    background_tasks.add_task(_run_pipeline_background, use_llm)
+    background_tasks.add_task(_start_pipeline, use_llm)
     logger.info("Pipeline run triggered via POST /run (use_llm=%s)", use_llm)
-
     return JSONResponse(
         status_code=202,
         content={
-            "message": "Pipeline started. Poll GET /results for fresh data.",
-            "use_llm": use_llm,
+            "message":  "Pipeline started. Poll GET /results for fresh data.",
+            "use_llm":  use_llm,
         },
     )

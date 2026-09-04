@@ -27,6 +27,7 @@ import json
 import logging
 import re
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -87,8 +88,10 @@ def load_metrics() -> list[dict]:
 # ---------------------------------------------------------------------------
 # CONCEPT GLOSSARY  (externalised — add new concepts without touching code)
 # ---------------------------------------------------------------------------
+@lru_cache(maxsize=1)
 def _load_concept_glossary() -> dict[str, str]:
-    """Load the vocabulary map from data/concept_glossary.json."""
+    """Load the vocabulary map from data/concept_glossary.json.
+    Cached after first load — avoids re-reading the file on every metric."""
     logger.debug("Loading concept glossary from %s", CONCEPT_GLOSSARY_PATH)
     with open(CONCEPT_GLOSSARY_PATH) as f:
         entries = json.load(f)

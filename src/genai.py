@@ -52,27 +52,15 @@ def retrieve_glossary_entry(
     query_text: str,
     glossary: list[dict],
     top_k: int = RETRIEVAL_TOP_K,
-) -> tuple[dict, float]:
+) -> tuple[dict, float, list[dict]]:
     """
     RAG STEP 1 = RETRIEVE (top-k then re-rank).
-
-    The original version returned only the single best hit. This is brittle
-    for conflict groups that span two concepts — e.g. a metric blending
-    revenue + user-activity logic might score highest on the wrong entry.
-
-    Now we:
-      1. Embed the query and all glossary entries.
-      2. Return top-k candidates by cosine similarity.
-      3. Re-rank by also checking whether the query text contains the concept
-         name as a keyword substring (keyword boost).
-      4. Return the top-ranked entry and its similarity score.
-
-    This gives the LLM more context (all top-k are injected into the prompt)
-    while still surfacing the single best match as the canonical entry.
+    Always returns a 3-tuple: (best_entry, best_sim, top_entries).
     """
     if not glossary:
         logger.warning("Glossary is empty — returning sentinel entry")
-        return {"concept": "Unknown", "official_definition": "No glossary available.", "owner": "—"}, 0.0
+        sentinel = {"concept": "Unknown", "official_definition": "No glossary available.", "owner": "—"}
+        return sentinel, 0.0, [sentinel]
 
     entry_texts = [f"{g['concept']}: {g['official_definition']}" for g in glossary]
     all_vecs = embed([query_text] + entry_texts)
@@ -104,7 +92,7 @@ def retrieve_glossary_entry(
         top_k, query_text[:50],
         [(e["concept"], round(s, 3)) for e, s in zip(top_entries, top_sims)],
     )
-    return best_entry, best_sim, top_entries   # caller may use all top_entries
+    return best_entry, best_sim, top_entries
 
 
 # ---------------------------------------------------------------------------
@@ -124,8 +112,8 @@ def call_llm(prompt: str, max_tokens: int = 500) -> str:
         import anthropic
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set — using fallback template")
-            return f"[LLM fallback – no API key]\n{_template_answer()}"
+            logger.warning("ANTHROPIC_API_KEY not set — showing setup instructions")
+            return _template_answer()
         client = anthropic.Anthropic(api_key=api_key)
         logger.debug("Calling LLM (max_tokens=%d)", max_tokens)
         msg = client.messages.create(
@@ -152,16 +140,17 @@ def call_llm(prompt: str, max_tokens: int = 500) -> str:
         except ImportError:
             logger.error("anthropic not installed; LLM call skipped: %s", exc)
 
-        return f"[LLM fallback – {type(exc).__name__}]\n{_template_answer()}"
+        return f"[Analysis unavailable — {type(exc).__name__}]\n{_template_answer()}"
 
 
 def _template_answer() -> str:
-    """Deterministic stand-in — honest and useful even without an API key."""
+    """Clean user-friendly fallback — shown when no API key is configured."""
     return (
-        "Based on the retrieved official definition, all teams should align "
-        "to the governed glossary definition. Teams whose logic diverges "
-        "(refund handling, time window, or filters) should migrate their SQL "
-        "and dashboards to the canonical definition to restore trust in the numbers."
+        "To get AI-powered recommendations, add your ANTHROPIC_API_KEY "
+        "in the environment settings and re-run the pipeline.\n\n"
+        "In the meantime: teams whose SQL logic diverges on refund handling, "
+        "time window, or filters should align to the canonical definition "
+        "shown in the governed glossary below to restore trust in the numbers."
     )
 
 
@@ -191,12 +180,7 @@ def resolve_conflict(conflict: dict, glossary: list[dict]) -> dict:
     query = f"{names}. {descriptions}"
 
     result = retrieve_glossary_entry(query, glossary)
-    # retrieve_glossary_entry now returns 3 values
-    if len(result) == 3:
-        best_entry, best_sim, top_entries = result
-    else:
-        best_entry, best_sim = result
-        top_entries = [best_entry]
+    best_entry, best_sim, top_entries = result  # always 3-tuple
 
     # Format all top-k entries for the prompt (richer context for the LLM)
     glossary_context = "\n\n".join(
